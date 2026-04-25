@@ -46,6 +46,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_level: string | null
           age: number | null
           created_at: string
           display_name: string | null
@@ -55,6 +56,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_level?: string | null
           age?: number | null
           created_at?: string
           display_name?: string | null
@@ -64,6 +66,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_level?: string | null
           age?: number | null
           created_at?: string
           display_name?: string | null
@@ -76,28 +79,73 @@ export type Database = {
       }
       weight_entries: {
         Row: {
+          ankle_cm: number | null
+          biceps_cm: number | null
+          body_fat_pct: number | null
+          bone_pct: number | null
+          calf_cm: number | null
+          chest_cm: number | null
           created_at: string
+          forearm_cm: number | null
+          hip_cm: number | null
           id: string
+          knee_cm: number | null
+          muscle_pct: number | null
           note: string | null
           recorded_at: string
+          shoulders_cm: number | null
+          thigh_cm: number | null
           user_id: string
+          waist_cm: number | null
+          water_pct: number | null
           weight_kg: number
+          wrist_cm: number | null
         }
         Insert: {
+          ankle_cm?: number | null
+          biceps_cm?: number | null
+          body_fat_pct?: number | null
+          bone_pct?: number | null
+          calf_cm?: number | null
+          chest_cm?: number | null
           created_at?: string
+          forearm_cm?: number | null
+          hip_cm?: number | null
           id?: string
+          knee_cm?: number | null
+          muscle_pct?: number | null
           note?: string | null
           recorded_at?: string
+          shoulders_cm?: number | null
+          thigh_cm?: number | null
           user_id: string
+          waist_cm?: number | null
+          water_pct?: number | null
           weight_kg: number
+          wrist_cm?: number | null
         }
         Update: {
+          ankle_cm?: number | null
+          biceps_cm?: number | null
+          body_fat_pct?: number | null
+          bone_pct?: number | null
+          calf_cm?: number | null
+          chest_cm?: number | null
           created_at?: string
+          forearm_cm?: number | null
+          hip_cm?: number | null
           id?: string
+          knee_cm?: number | null
+          muscle_pct?: number | null
           note?: string | null
           recorded_at?: string
+          shoulders_cm?: number | null
+          thigh_cm?: number | null
           user_id?: string
+          waist_cm?: number | null
+          water_pct?: number | null
           weight_kg?: number
+          wrist_cm?: number | null
         }
         Relationships: []
       }
