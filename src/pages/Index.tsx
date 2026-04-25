@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Activity, LogOut } from "lucide-react";
+import { Activity } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CoachChat } from "@/components/CoachChat";
@@ -12,25 +12,19 @@ import { Dashboard } from "@/components/Dashboard";
 import { NewMeasurementForm, NewMeasurementValues } from "@/components/NewMeasurementForm";
 import { ReportView } from "@/components/ReportView";
 import { HistoryList, HistoryEntry } from "@/components/HistoryList";
-import { ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement, buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg } from "@/lib/calculations";
+import { OnboardingDialog } from "@/components/OnboardingDialog";
+import { SideMenu } from "@/components/SideMenu";
+import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement, buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi } from "@/lib/calculations";
+import { useAppPrefs } from "@/contexts/AppPreferences";
+import { Plus } from "lucide-react";
 
 interface FullEntry extends HistoryEntry {
   weight_kg: number;
-  body_fat_pct: number | null;
-  water_pct: number | null;
-  muscle_pct: number | null;
-  bone_pct: number | null;
-  waist_cm: number | null;
-  hip_cm: number | null;
-  chest_cm: number | null;
-  shoulders_cm: number | null;
-  biceps_cm: number | null;
-  forearm_cm: number | null;
-  wrist_cm: number | null;
-  thigh_cm: number | null;
-  knee_cm: number | null;
-  calf_cm: number | null;
-  ankle_cm: number | null;
+  body_fat_pct: number | null; water_pct: number | null; muscle_pct: number | null; bone_pct: number | null;
+  waist_cm: number | null; hip_cm: number | null; chest_cm: number | null; shoulders_cm: number | null;
+  biceps_cm: number | null; forearm_cm: number | null; wrist_cm: number | null;
+  thigh_cm: number | null; knee_cm: number | null; calf_cm: number | null; ankle_cm: number | null;
 }
 
 interface ProfileRow {
@@ -39,17 +33,20 @@ interface ProfileRow {
   age: number | null;
   height_cm: number | null;
   activity_level: ActivityLevel | null;
+  avatar_url: string | null;
+  language: string | null;
+  units: string | null;
+  onboarding_completed: boolean | null;
 }
 
-interface GoalRow {
-  target_weight_kg: number;
-  target_date: string | null;
-}
+interface GoalRow { target_weight_kg: number; target_date: string | null; }
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { t, hydratePrefs } = useAppPrefs();
   const [tab, setTab] = useState<Tab>("home");
+  const [showNewForm, setShowNewForm] = useState(false);
   const [entries, setEntries] = useState<FullEntry[]>([]);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [goal, setGoal] = useState<GoalRow | null>(null);
@@ -65,20 +62,19 @@ const Index = () => {
     setLoading(true);
     const [{ data: e }, { data: p }, { data: g }] = await Promise.all([
       supabase.from("weight_entries").select("*").eq("user_id", user.id).order("recorded_at", { ascending: false }),
-      supabase.from("profiles").select("display_name, sex, age, height_cm, activity_level").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("goals").select("target_weight_kg, target_date").eq("user_id", user.id).maybeSingle(),
     ]);
     setEntries((e ?? []) as unknown as FullEntry[]);
     setProfile((p ?? null) as ProfileRow | null);
     setGoal((g ?? null) as GoalRow | null);
+    if (p) hydratePrefs({ language: (p as any).language, units: (p as any).units });
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (user) loadAll();
-  }, [user]);
+  useEffect(() => { if (user) loadAll(); }, [user]);
 
-  const latest = entries[0]; // sorted desc
+  const latest = entries[0];
   const start = entries[entries.length - 1];
 
   const userProfile: UserProfile | null = useMemo(() => {
@@ -103,6 +99,9 @@ const Index = () => {
   const dashboardAmr = dashboardBmr && userProfile
     ? Math.round(calcAmr(dashboardBmr, userProfile.activity_level))
     : null;
+  const dashboardBmi = latest && userProfile
+    ? calcBmi(Number(latest.weight_kg), userProfile.height_cm)
+    : null;
 
   const progress = (() => {
     if (!latest || !start || !targetWeight || start.id === latest.id) return 0;
@@ -113,67 +112,37 @@ const Index = () => {
 
   const handleSaveMeasurement = async (v: NewMeasurementValues) => {
     if (!user) return;
-
-    // Update profile
-    await supabase.from("profiles").update({
-      sex: v.sex,
-      age: v.age,
-      height_cm: v.height_cm,
-      activity_level: v.activity_level,
-    }).eq("id", user.id);
-
-    // Insert entry
     const { error } = await supabase.from("weight_entries").insert({
       user_id: user.id,
       recorded_at: new Date(v.recorded_at).toISOString(),
       weight_kg: v.weight_kg,
-      body_fat_pct: v.body_fat_pct,
-      water_pct: v.water_pct,
-      muscle_pct: v.muscle_pct,
-      bone_pct: v.bone_pct,
-      waist_cm: v.waist_cm,
-      hip_cm: v.hip_cm,
-      chest_cm: v.chest_cm,
-      shoulders_cm: v.shoulders_cm,
-      biceps_cm: v.biceps_cm,
-      forearm_cm: v.forearm_cm,
-      wrist_cm: v.wrist_cm,
-      thigh_cm: v.thigh_cm,
-      knee_cm: v.knee_cm,
-      calf_cm: v.calf_cm,
-      ankle_cm: v.ankle_cm,
+      body_fat_pct: v.body_fat_pct, water_pct: v.water_pct, muscle_pct: v.muscle_pct, bone_pct: v.bone_pct,
+      waist_cm: v.waist_cm, hip_cm: v.hip_cm, chest_cm: v.chest_cm, shoulders_cm: v.shoulders_cm,
+      biceps_cm: v.biceps_cm, forearm_cm: v.forearm_cm, wrist_cm: v.wrist_cm,
+      thigh_cm: v.thigh_cm, knee_cm: v.knee_cm, calf_cm: v.calf_cm, ankle_cm: v.ankle_cm,
     });
+    if (error) { toast.error("Σφάλμα: " + error.message); return; }
 
-    if (error) {
-      toast.error("Σφάλμα: " + error.message);
-      return;
-    }
-
-    // Auto-set goal if not exists
-    if (!goal && v.height_cm) {
-      const ideal = idealWeightKg(v.height_cm);
+    if (!goal && profile?.height_cm) {
+      const ideal = idealWeightKg(profile.height_cm);
       await supabase.from("goals").upsert({
-        user_id: user.id,
-        target_weight_kg: Math.round(ideal * 10) / 10,
-        source: "ai",
+        user_id: user.id, target_weight_kg: Math.round(ideal * 10) / 10, source: "ai",
       }, { onConflict: "user_id" });
     }
 
-    toast.success("Μέτρηση αποθηκεύτηκε!");
+    toast.success(t("common.save") + " ✓");
+    setShowNewForm(false);
     await loadAll();
     setTab("home");
   };
 
   const deleteEntry = async (id: string) => {
     await supabase.from("weight_entries").delete().eq("id", id);
-    toast.success("Διαγράφηκε");
+    toast.success(t("common.delete") + " ✓");
     loadAll();
   };
 
-  const viewReport = (id: string) => {
-    setReportEntryId(id);
-    setTab("report");
-  };
+  const viewReport = (id: string) => { setReportEntryId(id); setTab("report"); };
 
   const reportEntry = reportEntryId ? entries.find((e) => e.id === reportEntryId) : latest;
 
@@ -199,15 +168,23 @@ const Index = () => {
   })();
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Φόρτωση...
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
   }
+
+  const needsOnboarding = !!profile && !profile.onboarding_completed;
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Onboarding wizard (forced) */}
+      {user && needsOnboarding && (
+        <OnboardingDialog
+          open={true}
+          userId={user.id}
+          initialName={profile?.display_name ?? user.email?.split("@")[0]}
+          onComplete={() => loadAll()}
+        />
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
@@ -216,20 +193,24 @@ const Index = () => {
               <Activity className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-sm leading-tight truncate">{profile?.display_name ?? "Fitness Tracker"}</h1>
+              <h1 className="font-bold text-sm leading-tight truncate">{profile?.display_name ?? t("app.name")}</h1>
               <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} aria-label="Έξοδος">
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <SideMenu
+            displayName={profile?.display_name ?? ""}
+            email={user?.email ?? ""}
+            avatarUrl={profile?.avatar_url ?? null}
+            onOpenProfile={() => toast.info("Σελίδα Προφίλ — έρχεται")}
+            onOpenSettings={() => toast.info("Σελίδα Ρυθμίσεων — έρχεται")}
+            onLogout={signOut}
+          />
         </div>
       </header>
 
       <main className="container mx-auto max-w-3xl px-4 py-5 pb-28">
         {tab === "home" && (
           <Dashboard
-            displayName={profile?.display_name ?? ""}
             weight={latest ? Number(latest.weight_kg) : null}
             targetWeight={targetWeight}
             bodyFat={latest?.body_fat_pct != null ? Number(latest.body_fat_pct) : null}
@@ -238,51 +219,69 @@ const Index = () => {
             bone={latest?.bone_pct != null ? Number(latest.bone_pct) : null}
             bmr={dashboardBmr}
             amr={dashboardAmr}
+            bmi={dashboardBmi}
             progress={progress}
           />
         )}
 
-        {tab === "new" && (
-          <NewMeasurementForm
-            initial={{
-              sex: profile?.sex ?? "male",
-              age: profile?.age ?? null,
-              height_cm: profile?.height_cm ?? null,
-              activity_level: profile?.activity_level ?? "moderate",
-            }}
-            onSave={handleSaveMeasurement}
-          />
-        )}
-
         {tab === "report" && (
-          reportEntry && userProfile ? (
-            <ReportView
-              profile={userProfile}
-              report={buildReport(userProfile, reportEntry as Measurement)}
-              dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
-              displayName={profile?.display_name ?? user?.email ?? ""}
+          showNewForm ? (
+            <NewMeasurementForm
+              initial={{
+                sex: profile?.sex ?? "male",
+                age: profile?.age ?? null,
+                height_cm: profile?.height_cm ?? null,
+                activity_level: profile?.activity_level ?? "moderate",
+              }}
+              onSave={handleSaveMeasurement}
             />
+          ) : reportEntry && userProfile ? (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setShowNewForm(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Νέα μέτρηση
+                </Button>
+              </div>
+              <ReportView
+                profile={userProfile}
+                report={buildReport(userProfile, reportEntry as Measurement)}
+                dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
+                displayName={profile?.display_name ?? user?.email ?? ""}
+              />
+            </div>
           ) : (
             <div className="py-12 text-center space-y-3">
-              <p className="text-muted-foreground">Δεν υπάρχει αναφορά διαθέσιμη.</p>
-              <p className="text-sm text-muted-foreground">
-                Χρειάζεσαι: πλήρες προφίλ (φύλο, ηλικία, ύψος) και τουλάχιστον 1 μέτρηση.
-              </p>
-              <Button onClick={() => setTab("new")}>Προσθήκη μέτρησης</Button>
+              <p className="text-muted-foreground">{t("report.notAvailable")}</p>
+              <p className="text-sm text-muted-foreground">{t("report.needMore")}</p>
+              <Button onClick={() => setShowNewForm(true)}>
+                <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
+              </Button>
             </div>
           )
         )}
 
+        {tab === "progress" && (
+          <PlaceholderPage title={t("progress.title")}>
+            Master chart + per-metric line charts (1D/1W/1M/1Y/3Y/5Y/10Y/MAX) με target line — χτίζεται στο επόμενο update.
+          </PlaceholderPage>
+        )}
+
+        {tab === "diet" && (
+          <PlaceholderPage title={t("diet.title")}>
+            Live υπολογισμοί διατροφικών στόχων με βάση τις θερμίδες διατροφής & δραστηριότητας, αποθήκευση ημέρας, εξαγωγή PDF/Word — χτίζεται στο επόμενο update.
+          </PlaceholderPage>
+        )}
+
         {tab === "history" && (
-          <HistoryList
-            entries={entries}
-            onView={viewReport}
-            onDelete={deleteEntry}
-          />
+          <HistoryList entries={entries} onView={viewReport} onDelete={deleteEntry} />
         )}
       </main>
 
-      <BottomNav active={tab} onChange={(t) => { setTab(t); if (t !== "report") setReportEntryId(null); }} />
+      <BottomNav active={tab} onChange={(newTab) => {
+        setTab(newTab);
+        setShowNewForm(false);
+        if (newTab !== "report") setReportEntryId(null);
+      }} />
       <CoachChat context={aiContext} />
     </div>
   );
