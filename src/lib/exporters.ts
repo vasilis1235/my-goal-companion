@@ -1,8 +1,9 @@
-// Εξαγωγή αναφοράς σε PDF & Word
+// Εξαγωγή αναφοράς & διατροφικών στόχων σε PDF & Word
 import jsPDF from "jspdf";
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, BorderStyle } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
 import { FullReport, MEASUREMENT_LABELS, RATIO_LABELS, UserProfile, ACTIVITY_LABELS } from "./calculations";
+import { NutritionResult, fmtKcal, fmtNum } from "./nutrition";
 
 const arrow = (dir: "up" | "down" | "ok") => (dir === "up" ? "▲" : dir === "down" ? "▼" : "✅");
 const fmt = (n: number, d = 1) => n.toFixed(d);
