@@ -6,6 +6,8 @@ import { exportPDF, exportWord } from "@/lib/exporters";
 import { FileText, FileType, TrendingDown, TrendingUp, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ProfileInfoCard } from "./ProfileInfoCard";
+import { useAppPrefs } from "@/contexts/AppPreferences";
 
 interface ReportViewProps {
   profile: UserProfile;
@@ -53,12 +55,13 @@ const DiffRow = ({
 };
 
 export const ReportView = ({ profile, report, dateLabel, displayName }: ReportViewProps) => {
+  const { t } = useAppPrefs();
   const handlePDF = () => {
     try {
       exportPDF(profile, report, dateLabel, displayName);
-      toast.success("PDF δημιουργήθηκε!");
+      toast.success(t("export.pdfOk"));
     } catch (e) {
-      toast.error("Σφάλμα PDF");
+      toast.error("PDF error");
       console.error(e);
     }
   };
@@ -66,9 +69,9 @@ export const ReportView = ({ profile, report, dateLabel, displayName }: ReportVi
   const handleWord = async () => {
     try {
       await exportWord(profile, report, dateLabel, displayName);
-      toast.success("Word δημιουργήθηκε!");
+      toast.success(t("export.wordOk"));
     } catch (e) {
-      toast.error("Σφάλμα Word");
+      toast.error("Word error");
       console.error(e);
     }
   };
@@ -76,9 +79,18 @@ export const ReportView = ({ profile, report, dateLabel, displayName }: ReportVi
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Αναφορά</h2>
-        <p className="text-sm text-muted-foreground">Ημερομηνία μέτρησης: {dateLabel}</p>
+        <h2 className="text-2xl font-bold">{t("report.title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("report.date")}: {dateLabel}</p>
       </div>
+
+      {/* Profile info card (Prompt 1: between date and legend) */}
+      <ProfileInfoCard
+        sex={profile.sex}
+        age={profile.age}
+        height_cm={profile.height_cm}
+        activity={profile.activity_level}
+        title={t("report.profileCard")}
+      />
 
       <Card className="bg-muted/30">
         <CardContent className="pt-4 text-xs text-muted-foreground space-y-1">
@@ -87,12 +99,6 @@ export const ReportView = ({ profile, report, dateLabel, displayName }: ReportVi
             <Badge variant="outline" className="gap-1"><TrendingDown className="w-3 h-3 text-warning" /> Πρέπει να μειωθεί</Badge>
             <Badge variant="outline" className="gap-1"><TrendingUp className="w-3 h-3 text-info" /> Πρέπει να αυξηθεί</Badge>
           </div>
-          <p className="pt-2">
-            Φύλο: <span className="text-foreground">{profile.sex === "male" ? "Άντρας" : "Γυναίκα"}</span> ·
-            Ηλικία: <span className="text-foreground">{profile.age}</span> ·
-            Ύψος: <span className="text-foreground">{profile.height_cm} cm</span> ·
-            Δραστηριότητα: <span className="text-foreground">{ACTIVITY_LABELS[profile.activity_level]}</span>
-          </p>
         </CardContent>
       </Card>
 
