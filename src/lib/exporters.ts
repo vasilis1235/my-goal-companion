@@ -174,3 +174,96 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
   const blob = await Packer.toBlob(docx);
   saveAs(blob, `fitness-report-${dateLabel}.docx`);
 }
+
+// ============ DIET — κοινό κείμενο για PDF & Word ============
+function dietLines(n: NutritionResult, dateLabel: string): string[] {
+  const arrow = "🔺";
+  const sign = (v: number) => (v > 0 ? `+${fmtKcal(v)}` : fmtKcal(v));
+  return [
+    `Διατροφικοί στόχοι — ${dateLabel}`,
+    "",
+    "• Συνολική ημερήσια πρόσληψη θρεπτικών στοιχείων.",
+    `• Θερμίδες διατροφής: ${arrow}${sign(n.intake_kcal)} kcal/ημέρα`,
+    `• Θερμίδες βασικού μεταβολισμού (BMR): ${arrow}-${fmtKcal(n.bmr_kcal)} kcal (${fmtNum(n.bmrPctOfIntake, 1)}%)/ημέρα`,
+    `• Θερμική επίδραση τροφής (TEF): ${arrow}-${fmtKcal(n.tef_kcal)} kcal (${fmtNum(n.tefPctOfIntake, 1)}%)/ημέρα (10% επί της πρόσληψης)`,
+    `• Θερμίδες ασκήσεων: ${arrow}-${fmtKcal(n.exercise_kcal)} kcal (${fmtNum(n.exercisePctOfIntake, 1)}%)/ημέρα`,
+    `• Συνολική σπατάλη ενέργειας (TDEE): ${arrow}${sign(n.tdee_kcal)} kcal/ημέρα`,
+    `• Συνολικό θερμιδικό ${n.weight_loss ? "έλλειμμα" : "πλεόνασμα"}: ${n.weight_loss ? "–" : "+"}${fmtKcal(Math.abs(n.deficit_kcal))} kcal (${fmtNum(n.deficitPctOfIntake, 1)}%)/ημέρα`,
+    `• Συνολική ${n.weight_loss ? "απώλεια" : "αύξηση"} βάρους: ${fmtNum(Math.abs(n.weight_change_kg_day), 2)} Kg/ημέρα, ${fmtNum(Math.abs(n.weight_change_kg_week), 2)} Kg/εβδομάδα, ${fmtNum(Math.abs(n.weight_change_kg_month), 2)} Kg/μήνα.`,
+    `• Πρόσληψη πρωτεΐνης βασικού μεταβολισμού: 1.5 γρ. πρωτεΐνη × ${fmtNum(n.lean_mass_kg, 1)} Kg Άλιπης Μάζας = ${fmtNum(n.protein_baseline_g, 1)} γρ. πρωτεΐνης/ημέρα`,
+    `• Πρόσληψη πρωτεΐνης ασκήσεων: ${fmtKcal(Math.abs(n.deficit_kcal))} kcal ${n.weight_loss ? "έλλειμμα" : "πλεόνασμα"} × 0.035 γρ. πρωτεΐνη = ${fmtNum(n.protein_exercise_g, 1)} γρ. πρωτεΐνης/ημέρα`,
+    `• Συνολική πρόσληψη πρωτεΐνης: ${fmtNum(n.protein_total_g, 1)} γρ./ημέρα (${fmtKcal(n.protein_kcal)} kcal, ${fmtNum(n.protein_pct, 1)}%)`,
+    `• Συνολική πρόσληψη λιπαρών: ${fmtKcal(n.fat_kcal)} kcal / 9 = ${fmtNum(n.fat_g, 1)} γρ./ημέρα`,
+    `• Συνολική πρόσληψη υδατανθράκων: ${fmtKcal(n.carbs_kcal)} kcal (${fmtNum(n.carbs_pct, 1)}%) / 4 = ${fmtNum(n.carbs_g, 1)} γρ./ημέρα`,
+  ];
+}
+
+export function exportDietPDF(n: NutritionResult, dateLabel: string, displayName: string) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  let y = 50;
+
+  doc.setFillColor(15, 20, 40);
+  doc.rect(0, 0, pageW, 70, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+  doc.text("Fitness Tracker — Διατροφικοί στόχοι", margin, 35);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text(`${displayName} · ${dateLabel}`, margin, 55);
+  y = 100;
+
+  doc.setTextColor(20, 20, 30);
+  doc.setFontSize(10);
+  for (const line of dietLines(n, dateLabel)) {
+    if (y > 780) { doc.addPage(); y = 50; }
+    if (line === "") { y += 8; continue; }
+    if (line.startsWith("Διατροφικοί")) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+      doc.text(line, margin, y);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      y += 22;
+    } else {
+      const wrapped = doc.splitTextToSize(line, pageW - margin * 2);
+      doc.text(wrapped, margin, y);
+      y += wrapped.length * 14;
+    }
+  }
+  doc.save(`diet-${dateLabel}.pdf`);
+}
+
+export async function exportDietWord(n: NutritionResult, dateLabel: string, displayName: string) {
+  const para = (text: string, bold = false, size = 22) =>
+    new Paragraph({ children: [new TextRun({ text, bold, size, font: "Calibri" })] });
+
+  const lines = dietLines(n, dateLabel);
+  const children: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: "Fitness Tracker — Διατροφικοί στόχοι", bold: true, size: 36 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `${displayName} · ${dateLabel}`, size: 22, color: "666666" })],
+    }),
+    new Paragraph({ text: "" }),
+  ];
+  for (const line of lines) {
+    if (line === "") { children.push(new Paragraph({ text: "" })); continue; }
+    if (line.startsWith("Διατροφικοί")) {
+      children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: line, bold: true, size: 28, color: "DC3232" })] }));
+    } else {
+      children.push(para(line));
+    }
+  }
+
+  const docx = new Document({
+    sections: [{
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1000, right: 1000, bottom: 1000, left: 1000 } } },
+      children,
+    }],
+  });
+  const blob = await Packer.toBlob(docx);
+  saveAs(blob, `diet-${dateLabel}.docx`);
+}
+
