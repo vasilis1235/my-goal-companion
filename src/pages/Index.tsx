@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Activity } from "lucide-react";
+import { Activity, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CoachChat } from "@/components/CoachChat";
@@ -11,13 +11,17 @@ import { BottomNav, Tab } from "@/components/BottomNav";
 import { Dashboard } from "@/components/Dashboard";
 import { NewMeasurementForm, NewMeasurementValues } from "@/components/NewMeasurementForm";
 import { ReportView } from "@/components/ReportView";
-import { HistoryList, HistoryEntry } from "@/components/HistoryList";
+import { HistoryList, HistoryEntry, NutritionEntry } from "@/components/HistoryList";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { SideMenu } from "@/components/SideMenu";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
-import { ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement, buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi } from "@/lib/calculations";
+import { ProgressPage } from "@/components/ProgressPage";
+import { DietPage } from "@/components/DietPage";
+import {
+  ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement,
+  buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi,
+  idealBodyFatPct, idealWaterPct, idealMusclePct, idealBonePct,
+} from "@/lib/calculations";
 import { useAppPrefs } from "@/contexts/AppPreferences";
-import { Plus } from "lucide-react";
 
 interface FullEntry extends HistoryEntry {
   weight_kg: number;
@@ -48,6 +52,7 @@ const Index = () => {
   const [tab, setTab] = useState<Tab>("home");
   const [showNewForm, setShowNewForm] = useState(false);
   const [entries, setEntries] = useState<FullEntry[]>([]);
+  const [nutrition, setNutrition] = useState<NutritionEntry[]>([]);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [goal, setGoal] = useState<GoalRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,12 +65,14 @@ const Index = () => {
   const loadAll = async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: e }, { data: p }, { data: g }] = await Promise.all([
+    const [{ data: e }, { data: p }, { data: g }, { data: n }] = await Promise.all([
       supabase.from("weight_entries").select("*").eq("user_id", user.id).order("recorded_at", { ascending: false }),
       supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("goals").select("target_weight_kg, target_date").eq("user_id", user.id).maybeSingle(),
+      supabase.from("nutrition_entries").select("id, recorded_at, intake_kcal, activity_kcal, bmr_kcal, amr_kcal").eq("user_id", user.id).order("recorded_at", { ascending: false }),
     ]);
     setEntries((e ?? []) as unknown as FullEntry[]);
+    setNutrition((n ?? []) as unknown as NutritionEntry[]);
     setProfile((p ?? null) as ProfileRow | null);
     setGoal((g ?? null) as GoalRow | null);
     if (p) hydratePrefs({ language: (p as any).language, units: (p as any).units });
@@ -121,7 +128,7 @@ const Index = () => {
       biceps_cm: v.biceps_cm, forearm_cm: v.forearm_cm, wrist_cm: v.wrist_cm,
       thigh_cm: v.thigh_cm, knee_cm: v.knee_cm, calf_cm: v.calf_cm, ankle_cm: v.ankle_cm,
     });
-    if (error) { toast.error("Σφάλμα: " + error.message); return; }
+    if (error) { toast.error(error.message); return; }
 
     if (!goal && profile?.height_cm) {
       const ideal = idealWeightKg(profile.height_cm);
@@ -138,6 +145,12 @@ const Index = () => {
 
   const deleteEntry = async (id: string) => {
     await supabase.from("weight_entries").delete().eq("id", id);
+    toast.success(t("common.delete") + " ✓");
+    loadAll();
+  };
+
+  const deleteNutrition = async (id: string) => {
+    await supabase.from("nutrition_entries").delete().eq("id", id);
     toast.success(t("common.delete") + " ✓");
     loadAll();
   };
@@ -173,6 +186,21 @@ const Index = () => {
 
   const needsOnboarding = !!profile && !profile.onboarding_completed;
 
+  // Progress page targets
+  const progressIdealFat = userProfile ? idealBodyFatPct(userProfile.sex, userProfile.age) : null;
+  const progressIdealWater = userProfile ? idealWaterPct(userProfile.sex) : null;
+  const progressIdealMuscle = userProfile ? idealMusclePct(userProfile.sex) : null;
+  const progressIdealBone = latest ? idealBonePct(Number(latest.weight_kg)) : 15;
+
+  // Diet latest
+  const dietLatest = latest ? {
+    weight_kg: Number(latest.weight_kg),
+    body_fat_pct: latest.body_fat_pct != null ? Number(latest.body_fat_pct) : null,
+    muscle_pct: latest.muscle_pct != null ? Number(latest.muscle_pct) : null,
+    water_pct: latest.water_pct != null ? Number(latest.water_pct) : null,
+    bone_pct: latest.bone_pct != null ? Number(latest.bone_pct) : null,
+  } : null;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Onboarding wizard (forced) */}
@@ -201,8 +229,8 @@ const Index = () => {
             displayName={profile?.display_name ?? ""}
             email={user?.email ?? ""}
             avatarUrl={profile?.avatar_url ?? null}
-            onOpenProfile={() => toast.info("Σελίδα Προφίλ — έρχεται")}
-            onOpenSettings={() => toast.info("Σελίδα Ρυθμίσεων — έρχεται")}
+            onOpenProfile={() => navigate("/profile")}
+            onOpenSettings={() => navigate("/settings")}
             onLogout={signOut}
           />
         </div>
@@ -239,7 +267,7 @@ const Index = () => {
             <div className="space-y-3">
               <div className="flex justify-end">
                 <Button size="sm" onClick={() => setShowNewForm(true)}>
-                  <Plus className="w-4 h-4 mr-1" /> Νέα μέτρηση
+                  <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
                 </Button>
               </div>
               <ReportView
@@ -261,19 +289,42 @@ const Index = () => {
         )}
 
         {tab === "progress" && (
-          <PlaceholderPage title={t("progress.title")}>
-            Master chart + per-metric line charts (1D/1W/1M/1Y/3Y/5Y/10Y/MAX) με target line — χτίζεται στο επόμενο update.
-          </PlaceholderPage>
+          <ProgressPage
+            entries={entries.map((e) => ({
+              recorded_at: e.recorded_at,
+              weight_kg: Number(e.weight_kg),
+              body_fat_pct: e.body_fat_pct != null ? Number(e.body_fat_pct) : null,
+              water_pct: e.water_pct != null ? Number(e.water_pct) : null,
+              muscle_pct: e.muscle_pct != null ? Number(e.muscle_pct) : null,
+              bone_pct: e.bone_pct != null ? Number(e.bone_pct) : null,
+            }))}
+            targetWeight={targetWeight}
+            idealBodyFat={progressIdealFat}
+            idealWater={progressIdealWater}
+            idealMuscle={progressIdealMuscle}
+            idealBone={progressIdealBone}
+          />
         )}
 
         {tab === "diet" && (
-          <PlaceholderPage title={t("diet.title")}>
-            Live υπολογισμοί διατροφικών στόχων με βάση τις θερμίδες διατροφής & δραστηριότητας, αποθήκευση ημέρας, εξαγωγή PDF/Word — χτίζεται στο επόμενο update.
-          </PlaceholderPage>
+          <DietPage
+            latest={dietLatest}
+            bmr={dashboardBmr}
+            idealWeightKg={userProfile ? idealWeightKg(userProfile.height_cm) : null}
+            targetWeightKg={targetWeight}
+            displayName={profile?.display_name ?? user?.email ?? ""}
+            onSaved={() => loadAll()}
+          />
         )}
 
         {tab === "history" && (
-          <HistoryList entries={entries} onView={viewReport} onDelete={deleteEntry} />
+          <HistoryList
+            entries={entries}
+            nutrition={nutrition}
+            onView={viewReport}
+            onDelete={deleteEntry}
+            onDeleteNutrition={deleteNutrition}
+          />
         )}
       </main>
 
