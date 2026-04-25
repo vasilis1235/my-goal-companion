@@ -44,35 +44,101 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrition_entries: {
+        Row: {
+          activity_kcal: number
+          amr_kcal: number | null
+          bmr_kcal: number | null
+          body_fat_pct: number | null
+          bone_pct: number | null
+          created_at: string
+          id: string
+          intake_kcal: number
+          muscle_pct: number | null
+          note: string | null
+          recorded_at: string
+          target_weight_kg: number | null
+          user_id: string
+          water_pct: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          activity_kcal?: number
+          amr_kcal?: number | null
+          bmr_kcal?: number | null
+          body_fat_pct?: number | null
+          bone_pct?: number | null
+          created_at?: string
+          id?: string
+          intake_kcal: number
+          muscle_pct?: number | null
+          note?: string | null
+          recorded_at?: string
+          target_weight_kg?: number | null
+          user_id: string
+          water_pct?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          activity_kcal?: number
+          amr_kcal?: number | null
+          bmr_kcal?: number | null
+          body_fat_pct?: number | null
+          bone_pct?: number | null
+          created_at?: string
+          id?: string
+          intake_kcal?: number
+          muscle_pct?: number | null
+          note?: string | null
+          recorded_at?: string
+          target_weight_kg?: number | null
+          user_id?: string
+          water_pct?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null
           age: number | null
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           height_cm: number | null
           id: string
+          language: string
+          onboarding_completed: boolean
           sex: string | null
+          units: string
           updated_at: string
         }
         Insert: {
           activity_level?: string | null
           age?: number | null
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           height_cm?: number | null
           id: string
+          language?: string
+          onboarding_completed?: boolean
           sex?: string | null
+          units?: string
           updated_at?: string
         }
         Update: {
           activity_level?: string | null
           age?: number | null
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           height_cm?: number | null
           id?: string
+          language?: string
+          onboarding_completed?: boolean
           sex?: string | null
+          units?: string
           updated_at?: string
         }
         Relationships: []
