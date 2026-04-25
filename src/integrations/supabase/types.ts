@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      goals: {
+        Row: {
+          created_at: string
+          id: string
+          source: string
+          target_date: string | null
+          target_weight_kg: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source?: string
+          target_date?: string | null
+          target_weight_kg: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source?: string
+          target_date?: string | null
+          target_weight_kg?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          created_at: string
+          display_name: string | null
+          height_cm: number | null
+          id: string
+          sex: string | null
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          display_name?: string | null
+          height_cm?: number | null
+          id: string
+          sex?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          display_name?: string | null
+          height_cm?: number | null
+          id?: string
+          sex?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      weight_entries: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          recorded_at: string
+          user_id: string
+          weight_kg: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          recorded_at?: string
+          user_id: string
+          weight_kg: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          recorded_at?: string
+          user_id?: string
+          weight_kg?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
