@@ -215,16 +215,7 @@ const Index = () => {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--primary-glow))] flex items-center justify-center shrink-0">
-              <Activity className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-bold text-sm leading-tight truncate">{profile?.display_name ?? t("app.name")}</h1>
-              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
-            </div>
-          </div>
+        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-start">
           <SideMenu
             displayName={profile?.display_name ?? ""}
             email={user?.email ?? ""}
