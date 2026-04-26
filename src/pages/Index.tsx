@@ -127,6 +127,7 @@ const Index = () => {
       waist_cm: v.waist_cm, hip_cm: v.hip_cm, chest_cm: v.chest_cm, shoulders_cm: v.shoulders_cm,
       biceps_cm: v.biceps_cm, forearm_cm: v.forearm_cm, wrist_cm: v.wrist_cm,
       thigh_cm: v.thigh_cm, knee_cm: v.knee_cm, calf_cm: v.calf_cm, ankle_cm: v.ankle_cm,
+      bmr_kcal: v.bmr_override, amr_kcal: v.amr_override,
     });
     if (error) { toast.error(error.message); return; }
 
