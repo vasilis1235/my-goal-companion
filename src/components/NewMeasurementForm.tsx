@@ -30,6 +30,8 @@ export interface NewMeasurementValues {
   knee_cm: number | null;
   calf_cm: number | null;
   ankle_cm: number | null;
+  bmr_override: number | null;
+  amr_override: number | null;
 }
 
 interface Props {
@@ -122,6 +124,17 @@ export const NewMeasurementForm = ({ initial, onSave }: Props) => {
           {numField("knee_cm", "Περιφέρεια Γόνατος", "π.χ. 38.0", "cm")}
           {numField("calf_cm", "Περιφέρεια Γάμπας", "π.χ. 37.0", "cm")}
           {numField("ankle_cm", "Περιφέρεια Αστραγάλου", "π.χ. 22.0", "cm")}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Μεταβολικά (προαιρετικά)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          {numField("bmr_override", "BMR", "π.χ. 1750", "kcal")}
+          {numField("amr_override", "AMR", "π.χ. 2700", "kcal")}
+          <p className="col-span-2 text-[11px] text-muted-foreground">
+            Αν αφεθούν κενά, υπολογίζονται αυτόματα από βάρος/ύψος/ηλικία (Mifflin-St Jeor).
+          </p>
         </CardContent>
       </Card>
 
