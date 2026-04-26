@@ -29,6 +29,7 @@ interface FullEntry extends HistoryEntry {
   waist_cm: number | null; hip_cm: number | null; chest_cm: number | null; shoulders_cm: number | null;
   biceps_cm: number | null; forearm_cm: number | null; wrist_cm: number | null;
   thigh_cm: number | null; knee_cm: number | null; calf_cm: number | null; ankle_cm: number | null;
+  bmr_kcal: number | null; amr_kcal: number | null;
 }
 
 interface ProfileRow {
@@ -264,7 +265,12 @@ const Index = () => {
               </div>
               <ReportView
                 profile={userProfile}
-                report={buildReport(userProfile, reportEntry as Measurement)}
+                report={(() => {
+                  const r = buildReport(userProfile, reportEntry as Measurement);
+                  if (reportEntry.bmr_kcal != null) r.bmr.current = Math.round(Number(reportEntry.bmr_kcal));
+                  if (reportEntry.amr_kcal != null) r.amr.current = Math.round(Number(reportEntry.amr_kcal));
+                  return r;
+                })()}
                 dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
                 displayName={profile?.display_name ?? user?.email ?? ""}
               />
