@@ -19,7 +19,7 @@ interface DashboardProps {
   progress: number;
 }
 
-type IconLike = React.ComponentType<{ className?: string; strokeWidth?: number }>;
+type IconLike = React.ComponentType<any>;
 
 const ringColorClass = {
   fat: "bg-warning/15 text-warning",
