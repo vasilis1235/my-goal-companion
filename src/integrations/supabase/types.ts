@@ -145,8 +145,10 @@ export type Database = {
       }
       weight_entries: {
         Row: {
+          amr_kcal: number | null
           ankle_cm: number | null
           biceps_cm: number | null
+          bmr_kcal: number | null
           body_fat_pct: number | null
           bone_pct: number | null
           calf_cm: number | null
@@ -168,8 +170,10 @@ export type Database = {
           wrist_cm: number | null
         }
         Insert: {
+          amr_kcal?: number | null
           ankle_cm?: number | null
           biceps_cm?: number | null
+          bmr_kcal?: number | null
           body_fat_pct?: number | null
           bone_pct?: number | null
           calf_cm?: number | null
@@ -191,8 +195,10 @@ export type Database = {
           wrist_cm?: number | null
         }
         Update: {
+          amr_kcal?: number | null
           ankle_cm?: number | null
           biceps_cm?: number | null
+          bmr_kcal?: number | null
           body_fat_pct?: number | null
           bone_pct?: number | null
           calf_cm?: number | null
