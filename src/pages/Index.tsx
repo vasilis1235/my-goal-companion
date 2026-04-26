@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Activity, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CoachChat } from "@/components/CoachChat";
@@ -29,6 +29,7 @@ interface FullEntry extends HistoryEntry {
   waist_cm: number | null; hip_cm: number | null; chest_cm: number | null; shoulders_cm: number | null;
   biceps_cm: number | null; forearm_cm: number | null; wrist_cm: number | null;
   thigh_cm: number | null; knee_cm: number | null; calf_cm: number | null; ankle_cm: number | null;
+  bmr_kcal: number | null; amr_kcal: number | null;
 }
 
 interface ProfileRow {
@@ -127,6 +128,7 @@ const Index = () => {
       waist_cm: v.waist_cm, hip_cm: v.hip_cm, chest_cm: v.chest_cm, shoulders_cm: v.shoulders_cm,
       biceps_cm: v.biceps_cm, forearm_cm: v.forearm_cm, wrist_cm: v.wrist_cm,
       thigh_cm: v.thigh_cm, knee_cm: v.knee_cm, calf_cm: v.calf_cm, ankle_cm: v.ankle_cm,
+      bmr_kcal: v.bmr_override, amr_kcal: v.amr_override,
     });
     if (error) { toast.error(error.message); return; }
 
@@ -215,16 +217,7 @@ const Index = () => {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--primary-glow))] flex items-center justify-center shrink-0">
-              <Activity className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-bold text-sm leading-tight truncate">{profile?.display_name ?? t("app.name")}</h1>
-              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
-            </div>
-          </div>
+        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-start">
           <SideMenu
             displayName={profile?.display_name ?? ""}
             email={user?.email ?? ""}
@@ -272,9 +265,15 @@ const Index = () => {
               </div>
               <ReportView
                 profile={userProfile}
-                report={buildReport(userProfile, reportEntry as Measurement)}
+                report={(() => {
+                  const r = buildReport(userProfile, reportEntry as Measurement);
+                  if (reportEntry.bmr_kcal != null) r.bmr.current = Math.round(Number(reportEntry.bmr_kcal));
+                  if (reportEntry.amr_kcal != null) r.amr.current = Math.round(Number(reportEntry.amr_kcal));
+                  return r;
+                })()}
                 dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
                 displayName={profile?.display_name ?? user?.email ?? ""}
+                weightKg={Number(reportEntry.weight_kg)}
               />
             </div>
           ) : (

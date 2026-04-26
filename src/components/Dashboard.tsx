@@ -1,9 +1,10 @@
-import { Activity, Droplet, Dumbbell, Bone, User, Heart } from "lucide-react";
+import { Droplet, Bone, User, Heart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAppPrefs } from "@/contexts/AppPreferences";
 import { displayWeight } from "@/lib/units";
 import { bmiCategoryKey } from "@/lib/i18n";
+import { FatCellsIcon, FlexBicepIcon } from "@/components/icons/CustomIcons";
 
 interface DashboardProps {
   weight: number | null;          // kg
@@ -92,9 +93,9 @@ export const Dashboard = ({
 
       {/* Composition cards */}
       <div className="grid grid-cols-2 gap-3">
-        <CompositionCard icon={Activity} label={t("dash.fat")} pct={bodyFat} kg={kgOf(bodyFat)} color="warning" />
+        <CompositionCard icon={FatCellsIcon} label={t("dash.fat")} pct={bodyFat} kg={kgOf(bodyFat)} color="warning" />
         <CompositionCard icon={Droplet} label={t("dash.water")} pct={water} kg={kgOf(water)} color="info" />
-        <CompositionCard icon={Dumbbell} label={t("dash.muscle")} pct={muscle} kg={kgOf(muscle)} color="success" />
+        <CompositionCard icon={FlexBicepIcon} label={t("dash.muscle")} pct={muscle} kg={kgOf(muscle)} color="success" />
         <CompositionCard icon={Bone} label={t("dash.bone")} pct={bone} kg={kgOf(bone)} color="muted" />
       </div>
 
@@ -130,7 +131,9 @@ const colorClasses = {
   muted: "text-muted-foreground border-border bg-muted/30",
 };
 
-const CompositionCard = ({ icon: Icon, label, pct, kg, color }: { icon: typeof Activity; label: string; pct: number | null; kg: string; color: keyof typeof colorClasses }) => (
+type IconLike = React.ComponentType<any>;
+
+const CompositionCard = ({ icon: Icon, label, pct, kg, color }: { icon: IconLike; label: string; pct: number | null; kg: string; color: keyof typeof colorClasses }) => (
   <Card className={cn("border", colorClasses[color])}>
     <CardContent className="p-3 flex items-center gap-3">
       <Icon className="w-5 h-5 shrink-0" strokeWidth={2} />

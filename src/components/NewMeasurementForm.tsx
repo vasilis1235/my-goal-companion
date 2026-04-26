@@ -30,6 +30,8 @@ export interface NewMeasurementValues {
   knee_cm: number | null;
   calf_cm: number | null;
   ankle_cm: number | null;
+  bmr_override: number | null;
+  amr_override: number | null;
 }
 
 interface Props {
@@ -95,33 +97,44 @@ export const NewMeasurementForm = ({ initial, onSave }: Props) => {
         <CardHeader className="pb-3"><CardTitle className="text-base">Σύσταση Σώματος</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           {numField("weight_kg", "Βάρος *", "π.χ. 75.5", "kg")}
-          {numField("body_fat_pct", t("dash.fat"), undefined, "%")}
-          {numField("water_pct", t("dash.water"), undefined, "%")}
-          {numField("muscle_pct", t("dash.muscle"), undefined, "%")}
-          {numField("bone_pct", t("dash.bone"), undefined, "%")}
+          {numField("body_fat_pct", t("dash.fat"), "π.χ. 18.0", "%")}
+          {numField("water_pct", t("dash.water"), "π.χ. 60.0", "%")}
+          {numField("muscle_pct", t("dash.muscle"), "π.χ. 42.0", "%")}
+          {numField("bone_pct", t("dash.bone"), "π.χ. 15.0", "%")}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Μετρήσεις Κορμού</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
-          {numField("waist_cm", "Μέση", undefined, "cm")}
-          {numField("hip_cm", "Ισχίο", undefined, "cm")}
-          {numField("chest_cm", "Στήθος", undefined, "cm")}
-          {numField("shoulders_cm", "Ώμοι", undefined, "cm")}
+          {numField("waist_cm", "Περιφέρεια Μέσης", "π.χ. 82.0", "cm")}
+          {numField("hip_cm", "Περιφέρεια Ισχίου", "π.χ. 95.0", "cm")}
+          {numField("chest_cm", "Περιφέρεια Στήθους", "π.χ. 102.0", "cm")}
+          {numField("shoulders_cm", "Περιφέρεια Ώμων", "π.χ. 118.0", "cm")}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Μετρήσεις Άκρων</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
-          {numField("biceps_cm", "Δικέφαλα", undefined, "cm")}
-          {numField("forearm_cm", "Πήχης", undefined, "cm")}
-          {numField("wrist_cm", "Καρπός", undefined, "cm")}
-          {numField("thigh_cm", "Τετρακέφαλα", undefined, "cm")}
-          {numField("knee_cm", "Γόνατο", undefined, "cm")}
-          {numField("calf_cm", "Γάμπα", undefined, "cm")}
-          {numField("ankle_cm", "Αστράγαλος", undefined, "cm")}
+          {numField("biceps_cm", "Περιφέρεια Δικεφάλων", "π.χ. 35.0", "cm")}
+          {numField("forearm_cm", "Περιφέρεια Πήχη", "π.χ. 28.0", "cm")}
+          {numField("wrist_cm", "Περιφέρεια Καρπού", "π.χ. 17.0", "cm")}
+          {numField("thigh_cm", "Περιφέρεια Τετρακεφάλων", "π.χ. 56.0", "cm")}
+          {numField("knee_cm", "Περιφέρεια Γόνατος", "π.χ. 38.0", "cm")}
+          {numField("calf_cm", "Περιφέρεια Γάμπας", "π.χ. 37.0", "cm")}
+          {numField("ankle_cm", "Περιφέρεια Αστραγάλου", "π.χ. 22.0", "cm")}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Μεταβολικά (προαιρετικά)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          {numField("bmr_override", "BMR", "π.χ. 1750", "kcal")}
+          {numField("amr_override", "AMR", "π.χ. 2700", "kcal")}
+          <p className="col-span-2 text-[11px] text-muted-foreground">
+            Αν αφεθούν κενά, υπολογίζονται αυτόματα από βάρος/ύψος/ηλικία (Mifflin-St Jeor).
+          </p>
         </CardContent>
       </Card>
 
