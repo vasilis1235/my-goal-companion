@@ -273,6 +273,7 @@ const Index = () => {
                 })()}
                 dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
                 displayName={profile?.display_name ?? user?.email ?? ""}
+                weightKg={Number(reportEntry.weight_kg)}
               />
             </div>
           ) : (
