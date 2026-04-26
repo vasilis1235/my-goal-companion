@@ -1,4 +1,4 @@
-import { Droplet, Bone, User, Heart } from "lucide-react";
+import { Droplet, Bone, User, Heart, Flame, Activity } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAppPrefs } from "@/contexts/AppPreferences";
@@ -19,6 +19,57 @@ interface DashboardProps {
   progress: number;
 }
 
+type IconLike = React.ComponentType<any>;
+
+const ringColorClass = {
+  fat: "bg-warning/15 text-warning",
+  water: "bg-info/15 text-info",
+  muscle: "bg-success/15 text-success",
+  bone: "bg-muted text-muted-foreground",
+  bmr: "bg-orange-500/15 text-orange-500",
+  amr: "bg-yellow-500/15 text-yellow-500",
+  bmi: "bg-info/15 text-info",
+  category: "bg-warning/15 text-warning",
+} as const;
+
+const StatRow = ({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  variant,
+  isLast,
+}: {
+  icon: IconLike;
+  label: string;
+  value: string;
+  unit?: string;
+  variant: keyof typeof ringColorClass;
+  isLast?: boolean;
+}) => (
+  <div
+    className={cn(
+      "flex items-center gap-4 py-3 px-1",
+      !isLast && "border-b border-border/50"
+    )}
+  >
+    <div
+      className={cn(
+        "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+        ringColorClass[variant]
+      )}
+    >
+      <Icon className="w-5 h-5" strokeWidth={2} />
+    </div>
+    <span className="flex-1 text-base">{label}</span>
+    <span className="text-muted-foreground text-sm">—</span>
+    <span className="tabular-nums text-base font-medium ml-3">
+      {value}
+      {unit && <span className="ml-1">{unit}</span>}
+    </span>
+  </div>
+);
+
 export const Dashboard = ({
   weight, targetWeight, bodyFat, water, muscle, bone, bmr, amr, bmi, progress,
 }: DashboardProps) => {
@@ -33,16 +84,11 @@ export const Dashboard = ({
   const wDisp = hasWeight ? displayWeight(weight!, units, 1) : "—";
   const tDisp = targetWeight != null ? displayWeight(targetWeight, units, 1) : null;
 
-  // kg για κάθε σύσταση = % × βάρος / 100
-  const kgOf = (pct: number | null): string => {
-    if (pct == null || weight == null) return "—";
-    return displayWeight((pct / 100) * weight, units, 1);
-  };
-
   const bmiCat = bmi != null ? t(bmiCategoryKey(bmi)) : "—";
+  const fmtPct = (v: number | null) => (v != null ? `${v.toFixed(0)}%` : "—");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Big circle */}
       <div className="flex flex-col items-center pt-4">
         <div className="relative" style={{ width: ringSize, height: ringSize }}>
@@ -69,53 +115,42 @@ export const Dashboard = ({
         )}
       </div>
 
-      {/* BMI cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="border-info/30 bg-info/5">
-          <CardContent className="p-3 flex items-center gap-3">
-            <User className="w-5 h-5 shrink-0 text-info" strokeWidth={2} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] uppercase tracking-wider opacity-70 text-info">{t("dash.bmi")}</div>
-              <div className="text-lg font-bold tabular-nums text-info">{bmi != null ? bmi.toFixed(1) : "—"}</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-warning/30 bg-warning/5">
-          <CardContent className="p-3 flex items-center gap-3">
-            <Heart className="w-5 h-5 shrink-0 text-warning" strokeWidth={2} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] uppercase tracking-wider opacity-70 text-warning">{t("dash.bmiCategory")}</div>
-              <div className="text-sm font-bold text-warning leading-tight">{bmiCat}</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Composition cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <CompositionCard icon={FatCellsIcon} label={t("dash.fat")} pct={bodyFat} kg={kgOf(bodyFat)} color="warning" />
-        <CompositionCard icon={Droplet} label={t("dash.water")} pct={water} kg={kgOf(water)} color="info" />
-        <CompositionCard icon={FlexBicepIcon} label={t("dash.muscle")} pct={muscle} kg={kgOf(muscle)} color="success" />
-        <CompositionCard icon={Bone} label={t("dash.bone")} pct={bone} kg={kgOf(bone)} color="muted" />
-      </div>
-
-      {/* Metabolic */}
-      {(bmr != null || amr != null) && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">BMR</div>
-                <div className="text-xl font-bold tabular-nums">{bmr ?? "—"}<span className="text-xs font-normal text-muted-foreground ml-1">kcal</span></div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">AMR</div>
-                <div className="text-xl font-bold tabular-nums">{amr ?? "—"}<span className="text-xs font-normal text-muted-foreground ml-1">kcal</span></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Stats list (PDF style: 1 row each) */}
+      <Card>
+        <CardContent className="py-1">
+          <StatRow icon={FatCellsIcon} label={`% ${t("dash.fat")}`} value={fmtPct(bodyFat)} variant="fat" />
+          <StatRow icon={Droplet} label={`% ${t("dash.water")}`} value={fmtPct(water)} variant="water" />
+          <StatRow icon={FlexBicepIcon} label={`% ${t("dash.muscle")}`} value={fmtPct(muscle)} variant="muscle" />
+          <StatRow icon={Bone} label={`% ${t("dash.bone")}`} value={fmtPct(bone)} variant="bone" />
+          <StatRow
+            icon={User}
+            label={t("dash.bmi")}
+            value={bmi != null ? bmi.toFixed(1) : "—"}
+            variant="bmi"
+          />
+          <StatRow
+            icon={Heart}
+            label={t("dash.bmiCategory")}
+            value={bmiCat}
+            variant="category"
+          />
+          <StatRow
+            icon={Flame}
+            label="BMR"
+            value={bmr != null ? String(bmr) : "—"}
+            unit="kcal"
+            variant="bmr"
+          />
+          <StatRow
+            icon={Activity}
+            label="AMR"
+            value={amr != null ? String(amr) : "—"}
+            unit="kcal"
+            variant="amr"
+            isLast
+          />
+        </CardContent>
+      </Card>
 
       {!hasWeight && (
         <p className="text-center text-xs text-muted-foreground pt-2">{t("dash.firstMeasurement")}</p>
@@ -123,27 +158,3 @@ export const Dashboard = ({
     </div>
   );
 };
-
-const colorClasses = {
-  warning: "text-warning border-warning/30 bg-warning/5",
-  info: "text-info border-info/30 bg-info/5",
-  success: "text-success border-success/30 bg-success/5",
-  muted: "text-muted-foreground border-border bg-muted/30",
-};
-
-type IconLike = React.ComponentType<any>;
-
-const CompositionCard = ({ icon: Icon, label, pct, kg, color }: { icon: IconLike; label: string; pct: number | null; kg: string; color: keyof typeof colorClasses }) => (
-  <Card className={cn("border", colorClasses[color])}>
-    <CardContent className="p-3 flex items-center gap-3">
-      <Icon className="w-5 h-5 shrink-0" strokeWidth={2} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-wider opacity-70">{label}</div>
-        <div className="text-lg font-bold tabular-nums">
-          {pct != null ? pct.toFixed(1) : "—"}<span className="text-xs font-normal opacity-60 ml-0.5">%</span>
-        </div>
-        <div className="text-[11px] tabular-nums opacity-70">{kg}</div>
-      </div>
-    </CardContent>
-  </Card>
-);

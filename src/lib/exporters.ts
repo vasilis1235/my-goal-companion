@@ -5,162 +5,308 @@ import { saveAs } from "file-saver";
 import { FullReport, MEASUREMENT_LABELS, RATIO_LABELS, UserProfile, ACTIVITY_LABELS } from "./calculations";
 import { NutritionResult, fmtKcal, fmtNum } from "./nutrition";
 
-const arrow = (dir: "up" | "down" | "ok") => (dir === "up" ? "▲" : dir === "down" ? "▼" : "✅");
 const fmt = (n: number, d = 1) => n.toFixed(d);
+type Dir = "up" | "down" | "ok";
+const dirOf = (deltaAbs: number, deltaPct: number, tol = 1): Dir => {
+  if (Math.abs(deltaPct) <= tol) return "ok";
+  return deltaAbs > 0 ? "up" : "down";
+};
+const arrow = (d: Dir) => (d === "up" ? "▲" : d === "down" ? "▼" : "✅");
 
 // ============ PDF EXPORT ============
-export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string) {
+export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string, weightKg: number) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   let y = 50;
   const margin = 40;
   const lineH = 16;
 
-  const addLine = (text: string, opts: { bold?: boolean; size?: number; color?: [number, number, number]; indent?: number } = {}) => {
-    if (y > 780) { doc.addPage(); y = 50; }
+  const ensure = (extra = 0) => { if (y + extra > 800) { doc.addPage(); y = 50; } };
+
+  const text = (s: string, x: number, opts: { bold?: boolean; size?: number; color?: [number, number, number]; align?: "left" | "right" } = {}) => {
     doc.setFont("helvetica", opts.bold ? "bold" : "normal");
     doc.setFontSize(opts.size ?? 10);
-    if (opts.color) doc.setTextColor(...opts.color);
-    else doc.setTextColor(20, 20, 30);
-    doc.text(text, margin + (opts.indent ?? 0), y);
-    y += lineH;
+    if (opts.color) doc.setTextColor(...opts.color); else doc.setTextColor(20, 20, 30);
+    doc.text(s, x, y, { align: opts.align ?? "left" });
   };
 
-  const section = (title: string) => {
-    y += 8;
-    if (y > 760) { doc.addPage(); y = 50; }
-    doc.setFillColor(220, 50, 50);
-    doc.rect(margin, y - 12, pageW - margin * 2, 20, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(title, margin + 8, y + 2);
-    y += 22;
-    doc.setTextColor(20, 20, 30);
+  const sectionTitle = (title: string) => {
+    y += 12; ensure(28);
+    text(title, margin, { bold: true, size: 16 });
+    y += 6;
+    doc.setDrawColor(60, 60, 80);
+    doc.line(margin, y, pageW - margin, y);
+    y += 14;
+  };
+
+  // Row: label left, "current → target" right, then "(▼ Δ unit, ▼ Δ%)" on next line right-aligned
+  const scalarRow = (label: string, current: number, target: number, deltaAbs: number, deltaPct: number, unit: string, decimals = 1) => {
+    ensure(40);
+    const dir = dirOf(deltaAbs, deltaPct);
+    const okColor: [number, number, number] = [40, 160, 80];
+    const badColor: [number, number, number] = [220, 60, 60];
+    const targetColor = dir === "ok" ? okColor : badColor;
+
+    text(label, margin, { color: [120, 120, 130], size: 11 });
+    const main = `${fmt(current, decimals)}${unit ? " " + unit : ""}  →  ${fmt(target, decimals)}${unit ? " " + unit : ""}`;
+    // current part normal, then arrow, then target colored
+    const currentStr = `${fmt(current, decimals)}${unit ? " " + unit : ""}`;
+    const arrowStr = "  →  ";
+    const targetStr = `${fmt(target, decimals)}${unit ? " " + unit : ""}`;
+
+    // Right-aligned manual layout
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(20, 20, 30);
+    const targetW = doc.getTextWidth(targetStr);
+    const arrowW = doc.getTextWidth(arrowStr);
+    const currentW = doc.getTextWidth(currentStr);
+    const rightX = pageW - margin;
+    const targetX = rightX - targetW;
+    const arrowX = targetX - arrowW;
+    const currentX = arrowX - currentW;
+    text(currentStr, currentX, { size: 11 });
+    text(arrowStr, arrowX, { size: 11, color: [120, 120, 130] });
+    text(targetStr, targetX, { size: 11, bold: true, color: targetColor });
+    y += lineH;
+
+    // Delta line
+    if (dir === "ok") {
+      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: okColor, size: 10 });
+    } else {
+      const deltaStr = `( ${arrow(dir)} ${fmt(Math.abs(deltaAbs), decimals)}${unit ? " " + unit : ""}, ${arrow(dir)} ${fmt(Math.abs(deltaPct), 1)}%)`;
+      text(deltaStr, rightX, { align: "right", color: badColor, size: 10 });
+    }
+    y += lineH - 2;
+    doc.setDrawColor(220, 220, 230);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
+  };
+
+  const compositionRow = (label: string, currentPct: number, targetPct: number) => {
+    ensure(40);
+    const currentKg = (currentPct / 100) * weightKg;
+    const targetKg = (targetPct / 100) * weightKg;
+    const deltaPctSigned = targetPct - currentPct;
+    const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctSigned) / currentPct) * 100;
+    const deltaKgAbs = Math.abs(currentKg - targetKg);
+    const isOk = Math.abs(deltaPctSigned) <= 0.5;
+    const dir: Dir = isOk ? "ok" : deltaPctSigned > 0 ? "up" : "down";
+    const okColor: [number, number, number] = [40, 160, 80];
+    const badColor: [number, number, number] = [220, 60, 60];
+    const targetColor = isOk ? okColor : badColor;
+
+    text(label, margin, { color: [120, 120, 130], size: 11 });
+
+    const currentStr = `${fmt(currentPct)} % - ${fmt(currentKg)} kg`;
+    const arrowStr = "  →  ";
+    const targetStr = `${fmt(targetPct)} % - ${fmt(targetKg)} kg`;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    const rightX = pageW - margin;
+    const targetW = doc.getTextWidth(targetStr);
+    const arrowW = doc.getTextWidth(arrowStr);
+    const currentW = doc.getTextWidth(currentStr);
+    const targetX = rightX - targetW;
+    const arrowX = targetX - arrowW;
+    const currentX = arrowX - currentW;
+    text(currentStr, currentX, { size: 11 });
+    text(arrowStr, arrowX, { size: 11, color: [120, 120, 130] });
+    text(targetStr, targetX, { size: 11, bold: true, color: targetColor });
+    y += lineH;
+
+    if (isOk) {
+      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: okColor, size: 10 });
+    } else {
+      const deltaStr = `( ${arrow(dir)} ${fmt(Math.abs(deltaPctSigned))} %, ${arrow(dir)} ${fmt(remainingPct)}%, ${arrow(dir)} ${fmt(deltaKgAbs)} kg)`;
+      text(deltaStr, rightX, { align: "right", color: badColor, size: 10 });
+    }
+    y += lineH - 2;
+    doc.setDrawColor(220, 220, 230);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
   };
 
   // Header
   doc.setFillColor(15, 20, 40);
   doc.rect(0, 0, pageW, 70, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text("Fitness Tracker — Αναφορά", margin, 35);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`${displayName} · ${dateLabel}`, margin, 55);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+  doc.text("Αναφορά", margin, 35);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text(`${displayName}`, margin, 55);
   y = 100;
 
-  addLine(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm · Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`);
+  text(`Ημερομηνία μέτρησης: ${dateLabel}`, margin, { bold: true, size: 12 });
+  y += lineH + 4;
+  text(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm · Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, margin, { size: 10, color: [100, 100, 110] });
+  y += lineH + 4;
 
-  // Λεζάντα
-  y += 6;
-  addLine("Σημαίνουν: ▼ μείωση, ▲ αύξηση, ✅ επετεύχθη", { size: 9, color: [100, 100, 110] });
+  // Legend
+  text("Σημαίνουν:", margin, { bold: true, size: 10, color: [120, 120, 130] }); y += lineH;
+  text("(▼) Πρέπει να μειωθεί", margin, { size: 10, color: [220, 60, 60] }); y += lineH;
+  text("(▲) Πρέπει να αυξηθεί", margin, { size: 10, color: [60, 120, 220] }); y += lineH;
+  text("(✅) Στόχος επετεύχθη", margin, { size: 10, color: [40, 160, 80] }); y += lineH;
+  text("Κατηγορία: Τρέχον μέτρηση → Στόχος (Διαφορά, %, kg)", margin, { size: 10, color: [120, 120, 130] }); y += lineH;
 
   // Σύσταση Σώματος
-  section("Σύσταση Σώματος");
-  const dRow = (label: string, d: { current: number; target: number; deltaAbs: number; deltaPct: number; direction?: "up" | "down" | "ok" }, unit: string) => {
-    const dir = d.direction ?? (Math.abs(d.deltaPct) <= 3 ? "ok" : d.deltaAbs > 0 ? "up" : "down");
-    addLine(`${label}: ${fmt(d.current)} ${unit} → ${fmt(d.target)} ${unit}`, { bold: true });
-    addLine(`   ${arrow(dir)} ${fmt(Math.abs(d.deltaAbs))} ${unit} (${fmt(Math.abs(d.deltaPct))}%)`, { size: 9, color: [120, 120, 130] });
-  };
-
-  dRow("Βάρος", report.weight, "kg");
-  dRow("ΔΜΣ (BMI)", report.bmi, "");
-  addLine(`Κατηγορία ΔΜΣ: ${report.bmiCategory}`, { bold: true, color: [180, 60, 60] });
-  if (report.bodyFat) dRow("Λίπος", report.bodyFat, "%");
-  if (report.water) dRow("Υγρά", report.water, "%");
-  if (report.muscle) dRow("Μύες", report.muscle, "%");
-  if (report.bone) dRow("Κόκαλα", report.bone, "%");
+  sectionTitle("Σύσταση Σώματος");
+  scalarRow("Βάρος", report.weight.current, report.weight.target, report.weight.deltaAbs, report.weight.deltaPct, "kg");
+  if (report.bodyFat) compositionRow("Λίπος", report.bodyFat.current, report.bodyFat.target);
+  if (report.water) compositionRow("Υγρά", report.water.current, report.water.target);
+  if (report.muscle) compositionRow("Μύες", report.muscle.current, report.muscle.target);
+  if (report.bone) compositionRow("Κόκαλα", report.bone.current, report.bone.target);
+  scalarRow("ΔΜΣ", report.bmi.current, report.bmi.target, report.bmi.deltaAbs, report.bmi.deltaPct, "μονάδες");
+  ensure(20);
+  text("Κατηγορία ΔΜΣ", margin, { color: [120, 120, 130], size: 11 });
+  text(report.bmiCategory, pageW - margin, { align: "right", size: 11, bold: true, color: [220, 130, 40] });
+  y += lineH + 4;
 
   // Μετρήσεις
   if (Object.keys(report.measurements).length > 0) {
-    section("Περιφέρειες");
+    sectionTitle("Μετρήσεις Σώματος");
     for (const [k, d] of Object.entries(report.measurements)) {
-      if (d) dRow(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d, "εκ.");
+      if (d) scalarRow(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "εκ.");
     }
   }
 
   // Αναλογίες
   if (Object.keys(report.ratios).length > 0) {
-    section("Αναλογίες Σώματος");
+    sectionTitle("Αναλογίες Σώματος");
     for (const [k, d] of Object.entries(report.ratios)) {
-      if (d) dRow(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d, "");
+      if (d) scalarRow(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "", 2);
     }
   }
 
   // Μεταβολικά
-  section("Μεταβολικά Δεδομένα");
-  addLine(`BMR: ${report.bmr.current} kcal → ${report.bmr.target} kcal`, { bold: true });
-  addLine(`AMR: ${report.amr.current} kcal → ${report.amr.target} kcal`, { bold: true });
+  sectionTitle("Μεταβολικά Δεδομένα");
+  scalarRow("BMR", report.bmr.current, report.bmr.target,
+    report.bmr.target - report.bmr.current,
+    report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100,
+    "kcal", 0);
+  scalarRow("AMR", report.amr.current, report.amr.target,
+    report.amr.target - report.amr.current,
+    report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100,
+    "kcal", 0);
 
   doc.save(`fitness-report-${dateLabel}.pdf`);
 }
 
 // ============ WORD EXPORT ============
-export async function exportWord(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string) {
-  const para = (text: string, bold = false, size = 22) =>
-    new Paragraph({ children: [new TextRun({ text, bold, size, font: "Calibri" })] });
-
-  const dRows = (label: string, d: { current: number; target: number; deltaAbs: number; deltaPct: number; direction?: "up" | "down" | "ok" }, unit: string): Paragraph[] => {
-    const dir = d.direction ?? (Math.abs(d.deltaPct) <= 3 ? "ok" : d.deltaAbs > 0 ? "up" : "down");
-    return [
-      para(`${label}: ${fmt(d.current)} ${unit} → ${fmt(d.target)} ${unit}`, true),
-      para(`   ${arrow(dir)} ${fmt(Math.abs(d.deltaAbs))} ${unit} (${fmt(Math.abs(d.deltaPct))}%)`, false, 20),
-    ];
-  };
+export async function exportWord(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string, weightKg: number) {
+  const para = (text: string, opts: { bold?: boolean; size?: number; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) =>
+    new Paragraph({
+      alignment: opts.align,
+      children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 22, color: opts.color, font: "Calibri" })],
+    });
 
   const heading = (text: string) =>
     new Paragraph({
       heading: HeadingLevel.HEADING_2,
-      spacing: { before: 200, after: 120 },
-      children: [new TextRun({ text, bold: true, size: 28, color: "DC3232" })],
+      spacing: { before: 280, after: 140 },
+      children: [new TextRun({ text, bold: true, size: 32, color: "1A1A2E" })],
     });
 
+  const scalarParas = (label: string, current: number, target: number, deltaAbs: number, deltaPct: number, unit: string, decimals = 1): Paragraph[] => {
+    const dir = dirOf(deltaAbs, deltaPct);
+    const targetColor = dir === "ok" ? "28A050" : "DC3C3C";
+    const u = unit ? ` ${unit}` : "";
+    const main = new Paragraph({
+      children: [
+        new TextRun({ text: `${label}    `, color: "707080", size: 22, font: "Calibri" }),
+        new TextRun({ text: `${fmt(current, decimals)}${u}`, size: 22, font: "Calibri" }),
+        new TextRun({ text: "  →  ", color: "707080", size: 22, font: "Calibri" }),
+        new TextRun({ text: `${fmt(target, decimals)}${u}`, bold: true, color: targetColor, size: 22, font: "Calibri" }),
+      ],
+    });
+    const deltaText = dir === "ok"
+      ? "✅ Στόχος επετεύχθη"
+      : `( ${arrow(dir)} ${fmt(Math.abs(deltaAbs), decimals)}${u}, ${arrow(dir)} ${fmt(Math.abs(deltaPct), 1)}%)`;
+    const delta = new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      children: [new TextRun({ text: deltaText, color: dir === "ok" ? "28A050" : "DC3C3C", size: 20, font: "Calibri" })],
+    });
+    return [main, delta];
+  };
+
+  const compositionParas = (label: string, currentPct: number, targetPct: number): Paragraph[] => {
+    const currentKg = (currentPct / 100) * weightKg;
+    const targetKg = (targetPct / 100) * weightKg;
+    const deltaPctSigned = targetPct - currentPct;
+    const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctSigned) / currentPct) * 100;
+    const deltaKgAbs = Math.abs(currentKg - targetKg);
+    const isOk = Math.abs(deltaPctSigned) <= 0.5;
+    const dir: Dir = isOk ? "ok" : deltaPctSigned > 0 ? "up" : "down";
+    const targetColor = isOk ? "28A050" : "DC3C3C";
+    const main = new Paragraph({
+      children: [
+        new TextRun({ text: `${label}    `, color: "707080", size: 22, font: "Calibri" }),
+        new TextRun({ text: `${fmt(currentPct)} % - ${fmt(currentKg)} kg`, size: 22, font: "Calibri" }),
+        new TextRun({ text: "  →  ", color: "707080", size: 22, font: "Calibri" }),
+        new TextRun({ text: `${fmt(targetPct)} % - ${fmt(targetKg)} kg`, bold: true, color: targetColor, size: 22, font: "Calibri" }),
+      ],
+    });
+    const deltaText = isOk
+      ? "✅ Στόχος επετεύχθη"
+      : `( ${arrow(dir)} ${fmt(Math.abs(deltaPctSigned))} %, ${arrow(dir)} ${fmt(remainingPct)}%, ${arrow(dir)} ${fmt(deltaKgAbs)} kg)`;
+    const delta = new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      children: [new TextRun({ text: deltaText, color: isOk ? "28A050" : "DC3C3C", size: 20, font: "Calibri" })],
+    });
+    return [main, delta];
+  };
+
   const children: Paragraph[] = [
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: "Fitness Tracker — Αναφορά", bold: true, size: 36 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: `${displayName} · ${dateLabel}`, size: 22, color: "666666" })],
-    }),
-    new Paragraph({ text: "" }),
-    para(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm`),
-    para(`Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`),
-    para("Σημαίνουν: ▼ μείωση, ▲ αύξηση, ✅ επετεύχθη", false, 18),
+    para("Αναφορά", { bold: true, size: 40, align: AlignmentType.CENTER }),
+    para(`${displayName}`, { size: 22, color: "666666", align: AlignmentType.CENTER }),
+    para(""),
+    para(`Ημερομηνία μέτρησης: ${dateLabel}`, { bold: true, size: 24 }),
+    para(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm`, { size: 20, color: "707080" }),
+    para(`Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, { size: 20, color: "707080" }),
+    para(""),
+    para("Σημαίνουν:", { bold: true, size: 20, color: "707080" }),
+    para("(▼) Πρέπει να μειωθεί", { size: 20, color: "DC3C3C" }),
+    para("(▲) Πρέπει να αυξηθεί", { size: 20, color: "3C78DC" }),
+    para("(✅) Στόχος επετεύχθη", { size: 20, color: "28A050" }),
+    para("Κατηγορία: Τρέχον μέτρηση → Στόχος (Διαφορά, %, kg)", { size: 20, color: "707080" }),
 
     heading("Σύσταση Σώματος"),
-    ...dRows("Βάρος", report.weight, "kg"),
-    ...dRows("ΔΜΣ (BMI)", report.bmi, ""),
-    para(`Κατηγορία ΔΜΣ: ${report.bmiCategory}`, true),
+    ...scalarParas("Βάρος", report.weight.current, report.weight.target, report.weight.deltaAbs, report.weight.deltaPct, "kg"),
   ];
 
-  if (report.bodyFat) children.push(...dRows("Λίπος", report.bodyFat, "%"));
-  if (report.water) children.push(...dRows("Υγρά", report.water, "%"));
-  if (report.muscle) children.push(...dRows("Μύες", report.muscle, "%"));
-  if (report.bone) children.push(...dRows("Κόκαλα", report.bone, "%"));
+  if (report.bodyFat) children.push(...compositionParas("Λίπος", report.bodyFat.current, report.bodyFat.target));
+  if (report.water) children.push(...compositionParas("Υγρά", report.water.current, report.water.target));
+  if (report.muscle) children.push(...compositionParas("Μύες", report.muscle.current, report.muscle.target));
+  if (report.bone) children.push(...compositionParas("Κόκαλα", report.bone.current, report.bone.target));
+
+  children.push(...scalarParas("ΔΜΣ", report.bmi.current, report.bmi.target, report.bmi.deltaAbs, report.bmi.deltaPct, "μονάδες"));
+  children.push(new Paragraph({
+    children: [
+      new TextRun({ text: "Κατηγορία ΔΜΣ    ", color: "707080", size: 22, font: "Calibri" }),
+      new TextRun({ text: report.bmiCategory, bold: true, color: "DC8228", size: 22, font: "Calibri" }),
+    ],
+  }));
 
   if (Object.keys(report.measurements).length > 0) {
-    children.push(heading("Περιφέρειες"));
+    children.push(heading("Μετρήσεις Σώματος"));
     for (const [k, d] of Object.entries(report.measurements)) {
-      if (d) children.push(...dRows(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d, "εκ."));
+      if (d) children.push(...scalarParas(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "εκ."));
     }
   }
 
   if (Object.keys(report.ratios).length > 0) {
     children.push(heading("Αναλογίες Σώματος"));
     for (const [k, d] of Object.entries(report.ratios)) {
-      if (d) children.push(...dRows(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d, ""));
+      if (d) children.push(...scalarParas(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "", 2));
     }
   }
 
-  children.push(
-    heading("Μεταβολικά Δεδομένα"),
-    para(`BMR: ${report.bmr.current} kcal → ${report.bmr.target} kcal`, true),
-    para(`AMR: ${report.amr.current} kcal → ${report.amr.target} kcal`, true),
-  );
+  children.push(heading("Μεταβολικά Δεδομένα"));
+  children.push(...scalarParas("BMR", report.bmr.current, report.bmr.target,
+    report.bmr.target - report.bmr.current,
+    report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100,
+    "kcal", 0));
+  children.push(...scalarParas("AMR", report.amr.current, report.amr.target,
+    report.amr.target - report.amr.current,
+    report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100,
+    "kcal", 0));
 
   const docx = new Document({
     sections: [{
@@ -174,6 +320,7 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
   const blob = await Packer.toBlob(docx);
   saveAs(blob, `fitness-report-${dateLabel}.docx`);
 }
+
 
 // ============ DIET — κοινό κείμενο για PDF & Word ============
 function dietLines(n: NutritionResult, dateLabel: string): string[] {
