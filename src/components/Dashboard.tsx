@@ -131,7 +131,7 @@ const colorClasses = {
   muted: "text-muted-foreground border-border bg-muted/30",
 };
 
-type IconLike = React.ComponentType<{ className?: string; strokeWidth?: number }>;
+type IconLike = React.ComponentType<any>;
 
 const CompositionCard = ({ icon: Icon, label, pct, kg, color }: { icon: IconLike; label: string; pct: number | null; kg: string; color: keyof typeof colorClasses }) => (
   <Card className={cn("border", colorClasses[color])}>
