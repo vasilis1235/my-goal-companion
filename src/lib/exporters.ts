@@ -191,7 +191,7 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
 
 // ============ WORD EXPORT ============
 export async function exportWord(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string, weightKg: number) {
-  const para = (text: string, opts: { bold?: boolean; size?: number; color?: string; align?: AlignmentType } = {}) =>
+  const para = (text: string, opts: { bold?: boolean; size?: number; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) =>
     new Paragraph({
       alignment: opts.align,
       children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 22, color: opts.color, font: "Calibri" })],
