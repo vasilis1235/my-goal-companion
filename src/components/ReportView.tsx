@@ -14,6 +14,7 @@ interface ReportViewProps {
   report: FullReport;
   dateLabel: string;
   displayName: string;
+  weightKg: number;
 }
 
 const fmt = (n: number, d = 1) => n.toFixed(d);
@@ -54,7 +55,47 @@ const DiffRow = ({
   );
 };
 
-export const ReportView = ({ profile, report, dateLabel, displayName }: ReportViewProps) => {
+// Σύσταση σώματος row: εμφανίζει ποσοστό + kg + ανάλυση όπως ζητήθηκε
+const CompositionRow = ({
+  label, currentPct, targetPct, weightKg,
+}: {
+  label: string;
+  currentPct: number;
+  targetPct: number;
+  weightKg: number;
+}) => {
+  const currentKg = (currentPct / 100) * weightKg;
+  const targetKg = (targetPct / 100) * weightKg;
+  const deltaPctAbs = currentPct - targetPct; // πόσο πρέπει να αλλάξει
+  const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctAbs) / currentPct) * 100;
+  const deltaKgAbs = Math.abs(currentKg - targetKg);
+
+  const isOk = Math.abs(deltaPctAbs) <= 1;
+  const dir = isOk ? "ok" : deltaPctAbs > 0 ? "down" : "up";
+  const Icon = dir === "ok" ? Check : dir === "down" ? TrendingDown : TrendingUp;
+  const color = dir === "ok" ? "text-success" : dir === "down" ? "text-warning" : "text-info";
+
+  return (
+    <div className="py-2.5 border-b border-border/50 last:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-medium text-sm">{label}</span>
+        <Icon className={cn("w-4 h-4 shrink-0 mt-0.5", color)} />
+      </div>
+      <div className="flex items-baseline gap-2 mt-1 text-sm tabular-nums flex-wrap">
+        <span>{fmt(currentPct)}% - {fmt(currentKg)} kg</span>
+        <span className="text-muted-foreground">→</span>
+        <span className="font-semibold text-primary">{fmt(targetPct)}% - {fmt(targetKg)} kg</span>
+      </div>
+      <div className={cn("text-xs mt-0.5 tabular-nums", color)}>
+        {isOk
+          ? "✅ Στόχος επετεύχθη"
+          : `(${fmt(Math.abs(deltaPctAbs))}%, ${fmt(remainingPct)}%, ${fmt(deltaKgAbs)} kg)`}
+      </div>
+    </div>
+  );
+};
+
+export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }: ReportViewProps) => {
   const { t } = useAppPrefs();
   const handlePDF = () => {
     try {
@@ -99,6 +140,9 @@ export const ReportView = ({ profile, report, dateLabel, displayName }: ReportVi
             <Badge variant="outline" className="gap-1"><TrendingDown className="w-3 h-3 text-warning" /> Πρέπει να μειωθεί</Badge>
             <Badge variant="outline" className="gap-1"><TrendingUp className="w-3 h-3 text-info" /> Πρέπει να αυξηθεί</Badge>
           </div>
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Σύσταση σώματος: <span className="font-mono">% - kg → % - kg (Δ%, % απομένει, Δkg)</span>
+          </p>
         </CardContent>
       </Card>
 
@@ -112,10 +156,10 @@ export const ReportView = ({ profile, report, dateLabel, displayName }: ReportVi
             <span className="text-muted-foreground">Κατηγορία ΔΜΣ: </span>
             <span className="font-semibold text-warning">{report.bmiCategory}</span>
           </div>
-          {report.bodyFat && <DiffRow label="Λίπος" {...report.bodyFat} unit=" %" />}
-          {report.water && <DiffRow label="Υγρά" {...report.water} unit=" %" />}
-          {report.muscle && <DiffRow label="Μύες" {...report.muscle} unit=" %" />}
-          {report.bone && <DiffRow label="Κόκαλα" {...report.bone} unit=" %" />}
+          {report.bodyFat && <CompositionRow label="Λίπος" currentPct={report.bodyFat.current} targetPct={report.bodyFat.target} weightKg={weightKg} />}
+          {report.water && <CompositionRow label="Υγρά" currentPct={report.water.current} targetPct={report.water.target} weightKg={weightKg} />}
+          {report.muscle && <CompositionRow label="Μύες" currentPct={report.muscle.current} targetPct={report.muscle.target} weightKg={weightKg} />}
+          {report.bone && <CompositionRow label="Κόκαλα" currentPct={report.bone.current} targetPct={report.bone.target} weightKg={weightKg} />}
         </CardContent>
       </Card>
 
