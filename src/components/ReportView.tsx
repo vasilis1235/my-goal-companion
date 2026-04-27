@@ -18,59 +18,65 @@ interface ReportViewProps {
 
 const fmt = (n: number, d = 1) => n.toFixed(d);
 
+// Direction logic: based on current vs target.
+// "down" = current is above target → must decrease → RED
+// "up"   = current is below target → must increase → BLUE
+// "ok"   = within tolerance → GREEN
 type Dir = "up" | "down" | "ok";
-const dirOf = (deltaAbs: number, deltaPct: number, tol = 1): Dir => {
-  if (Math.abs(deltaPct) <= tol) return "ok";
-  // deltaAbs = target - current. Αν θετικό → πρέπει να αυξηθεί
-  return deltaAbs > 0 ? "up" : "down";
+const dirByCurrentTarget = (current: number, target: number, tol = 0.5): Dir => {
+  if (Math.abs(current - target) <= tol) return "ok";
+  return current > target ? "down" : "up";
 };
 
-const DirGlyph = ({ dir, className }: { dir: Dir; className?: string }) => {
-  const cls = cn(
-    "inline-block",
-    dir === "ok" ? "text-success" : dir === "down" ? "text-destructive" : "text-info",
-    className,
-  );
-  return <span className={cls}>{dir === "ok" ? "✅" : dir === "down" ? "▼" : "▲"}</span>;
-};
+const colorClass = (dir: Dir) =>
+  dir === "ok" ? "text-success" : dir === "down" ? "text-destructive" : "text-info";
 
-// Generic row: label | current → target  + (Δabs unit, Δpct%)
+const arrowEmoji = (dir: Dir) => (dir === "ok" ? "✅" : dir === "down" ? "🔻" : "🔺");
+
+// Number wrapper: colors only the numeric value, keeps surrounding chars (units/symbols) neutral
+const Num = ({ children, dir }: { children: React.ReactNode; dir: Dir }) => (
+  <span className={cn("tabular-nums font-semibold", colorClass(dir))}>{children}</span>
+);
+
+// Generic scalar row (Weight, BMI, measurements, ratios, BMR, AMR)
 const ScalarRow = ({
   label,
   current,
   target,
-  deltaAbs,
-  deltaPct,
   unit,
   decimals = 1,
 }: {
   label: string;
   current: number;
   target: number;
-  deltaAbs: number;
-  deltaPct: number;
   unit: string;
   decimals?: number;
 }) => {
-  const dir = dirOf(deltaAbs, deltaPct);
-  const targetColor = dir === "ok" ? "text-success" : "text-destructive";
+  const dir = dirByCurrentTarget(current, target);
+  const deltaAbs = Math.abs(current - target);
+  const deltaPct = current === 0 ? 0 : (Math.abs(current - target) / current) * 100;
+  const u = unit ? ` ${unit}` : "";
+
   return (
     <div className="py-3 border-b border-border/50 last:border-0">
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-base text-muted-foreground min-w-[140px]">{label}</span>
-        <div className="flex-1 text-right tabular-nums">
-          <span className="text-base">{fmt(current, decimals)}{unit ? ` ${unit}` : ""}</span>
+        <div className="flex-1 text-right text-base">
+          <Num dir={dir}>{fmt(current, decimals)}</Num>
+          {unit && <span>{u}</span>}
           <span className="text-muted-foreground mx-2">→</span>
-          <span className={cn("text-base font-semibold", targetColor)}>{fmt(target, decimals)}{unit ? ` ${unit}` : ""}</span>
+          <span className="text-muted-foreground">Στόχος: </span>
+          <Num dir={dir}>{fmt(target, decimals)}</Num>
+          {unit && <span>{u}</span>}
         </div>
       </div>
-      <div className="text-right text-sm tabular-nums mt-0.5">
+      <div className="text-right text-sm mt-0.5">
         {dir === "ok" ? (
-          <span className="text-success">✅ Στόχος επετεύχθη</span>
+          <span className={colorClass(dir)}>✅ Στόχος επετεύχθη</span>
         ) : (
-          <span className="text-destructive">
-            ( <DirGlyph dir={dir} /> {fmt(Math.abs(deltaAbs), decimals)}{unit ? ` ${unit}` : ""},{" "}
-            <DirGlyph dir={dir} /> {fmt(Math.abs(deltaPct), 1)}%)
+          <span>
+            ({arrowEmoji(dir)} <Num dir={dir}>{fmt(deltaAbs, decimals)}</Num>
+            {unit && ` ${unit}`}, {arrowEmoji(dir)} <Num dir={dir}>{fmt(deltaPct, 1)}</Num>%)
           </span>
         )}
       </div>
@@ -78,7 +84,7 @@ const ScalarRow = ({
   );
 };
 
-// Σύσταση σώματος row: % - kg → % - kg + (Δ%, % απομένει, Δkg)
+// Body composition row: kg first, then %, with triple-stat parens (Δkg, %change, Δpoints)
 const CompositionRow = ({
   label, currentPct, targetPct, weightKg,
 }: {
@@ -89,32 +95,37 @@ const CompositionRow = ({
 }) => {
   const currentKg = (currentPct / 100) * weightKg;
   const targetKg = (targetPct / 100) * weightKg;
-  const deltaPctSigned = targetPct - currentPct; // αν θετικό → πρέπει να αυξηθεί
-  const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctSigned) / currentPct) * 100;
-  const deltaKgAbs = Math.abs(currentKg - targetKg);
+  const dir = dirByCurrentTarget(currentPct, targetPct, 0.5);
 
-  const isOk = Math.abs(deltaPctSigned) <= 0.5;
-  const dir: Dir = isOk ? "ok" : deltaPctSigned > 0 ? "up" : "down";
-  const targetColor = isOk ? "text-success" : "text-destructive";
+  const deltaKg = Math.abs(currentKg - targetKg);
+  const deltaPctPoints = Math.abs(currentPct - targetPct); // ποσοστιαίες μονάδες
+  const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100; // % μεταβολής
 
   return (
     <div className="py-3 border-b border-border/50 last:border-0">
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-base text-muted-foreground min-w-[140px]">{label}</span>
-        <div className="flex-1 text-right tabular-nums">
-          <span className="text-base">{fmt(currentPct)} % - {fmt(currentKg)} kg</span>
+        <div className="flex-1 text-right text-base">
+          <Num dir={dir}>{fmt(currentKg)}</Num>
+          <span> kg - </span>
+          <Num dir={dir}>{fmt(currentPct)}</Num>
+          <span> %</span>
           <span className="text-muted-foreground mx-2">→</span>
-          <span className={cn("text-base font-semibold", targetColor)}>{fmt(targetPct)} % - {fmt(targetKg)} kg</span>
+          <span className="text-muted-foreground">Στόχος: </span>
+          <Num dir={dir}>{fmt(targetKg)}</Num>
+          <span> kg - </span>
+          <Num dir={dir}>{fmt(targetPct)}</Num>
+          <span> %</span>
         </div>
       </div>
-      <div className="text-right text-sm tabular-nums mt-0.5">
-        {isOk ? (
-          <span className="text-success">✅ Στόχος επετεύχθη</span>
+      <div className="text-right text-sm mt-0.5">
+        {dir === "ok" ? (
+          <span className={colorClass(dir)}>✅ Στόχος επετεύχθη</span>
         ) : (
-          <span className="text-destructive">
-            ( <DirGlyph dir={dir} /> {fmt(Math.abs(deltaPctSigned))} %,{" "}
-            <DirGlyph dir={dir} /> {fmt(remainingPct)}%,{" "}
-            <DirGlyph dir={dir} /> {fmt(deltaKgAbs)} kg)
+          <span>
+            ({arrowEmoji(dir)} <Num dir={dir}>{fmt(deltaKg)}</Num> kg, {arrowEmoji(dir)}{" "}
+            <Num dir={dir}>{fmt(pctChange)}</Num> %, {arrowEmoji(dir)}{" "}
+            <Num dir={dir}>{fmt(deltaPctPoints)}</Num>%)
           </span>
         )}
       </div>
@@ -144,11 +155,6 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
     }
   };
 
-  const bmrDir = dirOf(report.bmr.target - report.bmr.current,
-    report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100);
-  const amrDir = dirOf(report.amr.target - report.amr.current,
-    report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100);
-
   return (
     <div className="space-y-4">
       <h2 className="text-3xl font-bold">{t("report.title")}</h2>
@@ -176,11 +182,11 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
       <Card>
         <CardContent className="py-3 text-sm space-y-1">
           <div className="text-muted-foreground">Σημαίνουν:</div>
-          <div>(<span className="text-destructive">▼</span>) Πρέπει να μειωθεί</div>
-          <div>(<span className="text-info">▲</span>) Πρέπει να αυξηθεί</div>
+          <div>(<span className="text-destructive">🔻</span>) Πρέπει να μειωθεί</div>
+          <div>(<span className="text-destructive">🔺</span>) Πρέπει να αυξηθεί</div>
           <div>(<span className="text-success">✅</span>) Στόχος επετεύχθη</div>
           <div className="text-muted-foreground pt-1">
-            Κατηγορία: Τρέχον μέτρηση → Στόχος (Διαφορά, %, kg)
+            Κατηγορία: Τρέχον μέτρηση → Στόχος: [Στόχος kg] - [Στόχος %] (Διαφορά kg, % Μεταβολής, Διαφορά Ποσοστιαίων Μονάδων)
           </div>
         </CardContent>
       </Card>
@@ -189,12 +195,12 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
       <h3 className="text-2xl font-bold pt-2">Σύσταση Σώματος</h3>
       <Card>
         <CardContent className="py-1">
-          <ScalarRow label="Βάρος" {...report.weight} unit="kg" />
+          <ScalarRow label="Βάρος" current={report.weight.current} target={report.weight.target} unit="kg" />
           {report.bodyFat && <CompositionRow label="Λίπος" currentPct={report.bodyFat.current} targetPct={report.bodyFat.target} weightKg={weightKg} />}
           {report.water && <CompositionRow label="Υγρά" currentPct={report.water.current} targetPct={report.water.target} weightKg={weightKg} />}
           {report.muscle && <CompositionRow label="Μύες" currentPct={report.muscle.current} targetPct={report.muscle.target} weightKg={weightKg} />}
           {report.bone && <CompositionRow label="Κόκαλα" currentPct={report.bone.current} targetPct={report.bone.target} weightKg={weightKg} />}
-          <ScalarRow label="ΔΜΣ" {...report.bmi} unit="μονάδες" />
+          <ScalarRow label="ΔΜΣ" current={report.bmi.current} target={report.bmi.target} unit="μονάδες" />
           <div className="py-3 flex items-baseline gap-3">
             <span className="text-base text-muted-foreground min-w-[140px]">Κατηγορία ΔΜΣ</span>
             <span className="flex-1 text-right text-base font-semibold text-warning">{report.bmiCategory}</span>
@@ -209,7 +215,7 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
           <Card>
             <CardContent className="py-1">
               {Object.entries(report.measurements).map(([k, d]) =>
-                d ? <ScalarRow key={k} label={MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS]} {...d} unit="εκ." /> : null
+                d ? <ScalarRow key={k} label={MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS]} current={d.current} target={d.target} unit="εκ." /> : null
               )}
             </CardContent>
           </Card>
@@ -229,8 +235,6 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
                     label={RATIO_LABELS[k as keyof typeof RATIO_LABELS]}
                     current={d.current}
                     target={d.target}
-                    deltaAbs={d.deltaAbs}
-                    deltaPct={d.deltaPct}
                     unit=""
                     decimals={2}
                   />
@@ -245,24 +249,8 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
       <h3 className="text-2xl font-bold pt-2">Μεταβολικά Δεδομένα</h3>
       <Card>
         <CardContent className="py-1">
-          <ScalarRow
-            label="BMR"
-            current={report.bmr.current}
-            target={report.bmr.target}
-            deltaAbs={report.bmr.target - report.bmr.current}
-            deltaPct={report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100}
-            unit="kcal"
-            decimals={0}
-          />
-          <ScalarRow
-            label="AMR"
-            current={report.amr.current}
-            target={report.amr.target}
-            deltaAbs={report.amr.target - report.amr.current}
-            deltaPct={report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100}
-            unit="kcal"
-            decimals={0}
-          />
+          <ScalarRow label="BMR" current={report.bmr.current} target={report.bmr.target} unit="kcal" decimals={0} />
+          <ScalarRow label="AMR" current={report.amr.current} target={report.amr.target} unit="kcal" decimals={0} />
         </CardContent>
       </Card>
 

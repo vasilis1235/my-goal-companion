@@ -242,6 +242,7 @@ const Index = () => {
             amr={dashboardAmr}
             bmi={dashboardBmi}
             progress={progress}
+            measuredAt={latest?.recorded_at ?? null}
           />
         )}
 

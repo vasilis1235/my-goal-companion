@@ -1,10 +1,11 @@
-import { Droplet, Bone, User, Heart, Flame, Activity } from "lucide-react";
+import { Droplet, Bone, User, Heart, Flame, Activity, Dumbbell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAppPrefs } from "@/contexts/AppPreferences";
 import { displayWeight } from "@/lib/units";
 import { bmiCategoryKey } from "@/lib/i18n";
-import { FatCellsIcon, FlexBicepIcon } from "@/components/icons/CustomIcons";
+import { FatCellsIcon } from "@/components/icons/CustomIcons";
+import { format } from "date-fns";
 
 interface DashboardProps {
   weight: number | null;          // kg
@@ -17,15 +18,17 @@ interface DashboardProps {
   amr: number | null;
   bmi: number | null;
   progress: number;
+  measuredAt?: string | null;     // ISO date of latest measurement
 }
 
 type IconLike = React.ComponentType<any>;
 
+// All icons get a colored circular background like the BMR icon — except Muscle keeps the dumbbell
 const ringColorClass = {
-  fat: "bg-warning/15 text-warning",
+  fat: "bg-orange-500/15 text-orange-500",
   water: "bg-info/15 text-info",
   muscle: "bg-success/15 text-success",
-  bone: "bg-muted text-muted-foreground",
+  bone: "bg-amber-700/15 text-amber-700 dark:text-amber-500",
   bmr: "bg-orange-500/15 text-orange-500",
   amr: "bg-yellow-500/15 text-yellow-500",
   bmi: "bg-info/15 text-info",
@@ -36,14 +39,12 @@ const StatRow = ({
   icon: Icon,
   label,
   value,
-  unit,
   variant,
   isLast,
 }: {
   icon: IconLike;
   label: string;
-  value: string;
-  unit?: string;
+  value: React.ReactNode;
   variant: keyof typeof ringColorClass;
   isLast?: boolean;
 }) => (
@@ -62,16 +63,12 @@ const StatRow = ({
       <Icon className="w-5 h-5" strokeWidth={2} />
     </div>
     <span className="flex-1 text-base">{label}</span>
-    <span className="text-muted-foreground text-sm">—</span>
-    <span className="tabular-nums text-base font-medium ml-3">
-      {value}
-      {unit && <span className="ml-1">{unit}</span>}
-    </span>
+    <span className="tabular-nums text-base font-medium">{value}</span>
   </div>
 );
 
 export const Dashboard = ({
-  weight, targetWeight, bodyFat, water, muscle, bone, bmr, amr, bmi, progress,
+  weight, targetWeight, bodyFat, water, muscle, bone, bmr, amr, bmi, progress, measuredAt,
 }: DashboardProps) => {
   const { t, units } = useAppPrefs();
   const hasWeight = weight != null;
@@ -85,7 +82,19 @@ export const Dashboard = ({
   const tDisp = targetWeight != null ? displayWeight(targetWeight, units, 1) : null;
 
   const bmiCat = bmi != null ? t(bmiCategoryKey(bmi)) : "—";
-  const fmtPct = (v: number | null) => (v != null ? `${v.toFixed(0)}%` : "—");
+  const measuredDate = measuredAt ? format(new Date(measuredAt), "dd/MM/yyyy") : null;
+
+  // Helpers: render "X.X kg (YY%)" format
+  const kgPctValue = (pct: number | null, weightKg: number | null) => {
+    if (pct == null || weightKg == null) return <span>—</span>;
+    const kg = (pct / 100) * weightKg;
+    return (
+      <>
+        <span>{kg.toFixed(1)} kg</span>
+        <span className="text-muted-foreground"> ({pct.toFixed(0)}%)</span>
+      </>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -100,6 +109,9 @@ export const Dashboard = ({
               style={{ filter: "drop-shadow(0 0 8px hsl(var(--primary) / 0.5))" }} />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {measuredDate && (
+              <span className="text-xs text-muted-foreground mb-1">{measuredDate}</span>
+            )}
             <span className="text-xs uppercase tracking-wider text-muted-foreground">{t("dash.weight")}</span>
             <span className="text-5xl font-bold tabular-nums">{wDisp.split(" ")[0]}</span>
             <span className="text-xs text-muted-foreground -mt-1">{wDisp.split(" ")[1] ?? ""}</span>
@@ -115,13 +127,13 @@ export const Dashboard = ({
         )}
       </div>
 
-      {/* Stats list (PDF style: 1 row each) */}
+      {/* Stats list */}
       <Card>
         <CardContent className="py-1">
-          <StatRow icon={FatCellsIcon} label={`% ${t("dash.fat")}`} value={fmtPct(bodyFat)} variant="fat" />
-          <StatRow icon={Droplet} label={`% ${t("dash.water")}`} value={fmtPct(water)} variant="water" />
-          <StatRow icon={FlexBicepIcon} label={`% ${t("dash.muscle")}`} value={fmtPct(muscle)} variant="muscle" />
-          <StatRow icon={Bone} label={`% ${t("dash.bone")}`} value={fmtPct(bone)} variant="bone" />
+          <StatRow icon={FatCellsIcon} label={t("dash.fat")} value={kgPctValue(bodyFat, weight)} variant="fat" />
+          <StatRow icon={Droplet} label={t("dash.water")} value={kgPctValue(water, weight)} variant="water" />
+          <StatRow icon={Dumbbell} label={t("dash.muscle")} value={kgPctValue(muscle, weight)} variant="muscle" />
+          <StatRow icon={Bone} label={t("dash.bone")} value={kgPctValue(bone, weight)} variant="bone" />
           <StatRow
             icon={User}
             label={t("dash.bmi")}
@@ -137,15 +149,13 @@ export const Dashboard = ({
           <StatRow
             icon={Flame}
             label="BMR"
-            value={bmr != null ? String(bmr) : "—"}
-            unit="kcal"
+            value={bmr != null ? <>{bmr} <span className="text-muted-foreground text-sm">kcal</span></> : "—"}
             variant="bmr"
           />
           <StatRow
             icon={Activity}
             label="AMR"
-            value={amr != null ? String(amr) : "—"}
-            unit="kcal"
+            value={amr != null ? <>{amr} <span className="text-muted-foreground text-sm">kcal</span></> : "—"}
             variant="amr"
             isLast
           />
