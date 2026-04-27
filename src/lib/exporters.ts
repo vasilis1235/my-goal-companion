@@ -6,12 +6,49 @@ import { FullReport, MEASUREMENT_LABELS, RATIO_LABELS, UserProfile, ACTIVITY_LAB
 import { NutritionResult, fmtKcal, fmtNum } from "./nutrition";
 
 const fmt = (n: number, d = 1) => n.toFixed(d);
+
 type Dir = "up" | "down" | "ok";
-const dirOf = (deltaAbs: number, deltaPct: number, tol = 1): Dir => {
-  if (Math.abs(deltaPct) <= tol) return "ok";
-  return deltaAbs > 0 ? "up" : "down";
+const dirByCurrentTarget = (current: number, target: number, tol = 0.5): Dir => {
+  if (Math.abs(current - target) <= tol) return "ok";
+  return current > target ? "down" : "up";
 };
-const arrow = (d: Dir) => (d === "up" ? "▲" : d === "down" ? "▼" : "✅");
+const arrowEmoji = (d: Dir) => (d === "up" ? "🔺" : d === "down" ? "🔻" : "✅");
+// PDF colors (RGB) — match UI semantic tokens approximately
+const COL = {
+  red: [220, 60, 60] as [number, number, number],
+  blue: [60, 130, 220] as [number, number, number],
+  green: [40, 160, 80] as [number, number, number],
+  muted: [120, 120, 130] as [number, number, number],
+  text: [20, 20, 30] as [number, number, number],
+};
+const colorOf = (d: Dir): [number, number, number] =>
+  d === "ok" ? COL.green : d === "down" ? COL.red : COL.blue;
+
+// Word colors (hex)
+const WCOL = {
+  red: "DC3C3C",
+  blue: "3C82DC",
+  green: "28A050",
+  muted: "707080",
+  text: "1A1A1E",
+};
+const wcolorOf = (d: Dir) => (d === "ok" ? WCOL.green : d === "down" ? WCOL.red : WCOL.blue);
+
+// Mobile-friendly file save: native share sheet on mobile, regular download on desktop.
+async function saveBlob(blob: Blob, filename: string) {
+  // Try native sharing first (mobile)
+  const f = new File([blob], filename, { type: blob.type });
+  const navAny = navigator as any;
+  if (navAny.canShare && navAny.canShare({ files: [f] })) {
+    try {
+      await navAny.share({ files: [f], title: filename });
+      return;
+    } catch {
+      // user cancelled or failed → fall through to download
+    }
+  }
+  saveAs(blob, filename);
+}
 
 // ============ PDF EXPORT ============
 export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string, weightKg: number) {
@@ -26,7 +63,7 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
   const text = (s: string, x: number, opts: { bold?: boolean; size?: number; color?: [number, number, number]; align?: "left" | "right" } = {}) => {
     doc.setFont("helvetica", opts.bold ? "bold" : "normal");
     doc.setFontSize(opts.size ?? 10);
-    if (opts.color) doc.setTextColor(...opts.color); else doc.setTextColor(20, 20, 30);
+    if (opts.color) doc.setTextColor(...opts.color); else doc.setTextColor(...COL.text);
     doc.text(s, x, y, { align: opts.align ?? "left" });
   };
 
@@ -39,41 +76,65 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
     y += 14;
   };
 
-  // Row: label left, "current → target" right, then "(▼ Δ unit, ▼ Δ%)" on next line right-aligned
-  const scalarRow = (label: string, current: number, target: number, deltaAbs: number, deltaPct: number, unit: string, decimals = 1) => {
+  // Right-aligned segmented row: places segments with mixed colors right-to-left.
+  type Seg = { text: string; color?: [number, number, number]; bold?: boolean; size?: number };
+  const drawSegments = (segments: Seg[], rightX: number, defaultSize = 11) => {
+    let x = rightX;
+    // Compute widths first
+    const withWidth = segments.map((s) => {
+      doc.setFont("helvetica", s.bold ? "bold" : "normal");
+      doc.setFontSize(s.size ?? defaultSize);
+      return { ...s, width: doc.getTextWidth(s.text) };
+    });
+    // Place from right
+    for (let i = withWidth.length - 1; i >= 0; i--) {
+      const s = withWidth[i];
+      x -= s.width;
+    }
+    let cursor = x;
+    for (const s of withWidth) {
+      doc.setFont("helvetica", s.bold ? "bold" : "normal");
+      doc.setFontSize(s.size ?? defaultSize);
+      doc.setTextColor(...(s.color ?? COL.text));
+      doc.text(s.text, cursor, y);
+      cursor += s.width;
+    }
+  };
+
+  // Scalar row: kg-style or any unit (e.g. "Βάρος 75.0 kg → Στόχος: 70.0 kg" + delta line)
+  const scalarRow = (label: string, current: number, target: number, unit: string, decimals = 1) => {
     ensure(40);
-    const dir = dirOf(deltaAbs, deltaPct);
-    const okColor: [number, number, number] = [40, 160, 80];
-    const badColor: [number, number, number] = [220, 60, 60];
-    const targetColor = dir === "ok" ? okColor : badColor;
+    const dir = dirByCurrentTarget(current, target);
+    const numColor = colorOf(dir);
+    const u = unit ? ` ${unit}` : "";
 
-    text(label, margin, { color: [120, 120, 130], size: 11 });
-    const main = `${fmt(current, decimals)}${unit ? " " + unit : ""}  →  ${fmt(target, decimals)}${unit ? " " + unit : ""}`;
-    // current part normal, then arrow, then target colored
-    const currentStr = `${fmt(current, decimals)}${unit ? " " + unit : ""}`;
-    const arrowStr = "  →  ";
-    const targetStr = `${fmt(target, decimals)}${unit ? " " + unit : ""}`;
+    text(label, margin, { color: COL.muted, size: 11 });
 
-    // Right-aligned manual layout
-    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(20, 20, 30);
-    const targetW = doc.getTextWidth(targetStr);
-    const arrowW = doc.getTextWidth(arrowStr);
-    const currentW = doc.getTextWidth(currentStr);
     const rightX = pageW - margin;
-    const targetX = rightX - targetW;
-    const arrowX = targetX - arrowW;
-    const currentX = arrowX - currentW;
-    text(currentStr, currentX, { size: 11 });
-    text(arrowStr, arrowX, { size: 11, color: [120, 120, 130] });
-    text(targetStr, targetX, { size: 11, bold: true, color: targetColor });
+    drawSegments([
+      { text: fmt(current, decimals), color: numColor, bold: true },
+      { text: u, color: COL.text },
+      { text: "  →  ", color: COL.muted },
+      { text: "Στόχος: ", color: COL.muted },
+      { text: fmt(target, decimals), color: numColor, bold: true },
+      { text: u, color: COL.text },
+    ], rightX);
     y += lineH;
 
-    // Delta line
     if (dir === "ok") {
-      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: okColor, size: 10 });
+      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: COL.green, size: 10 });
     } else {
-      const deltaStr = `( ${arrow(dir)} ${fmt(Math.abs(deltaAbs), decimals)}${unit ? " " + unit : ""}, ${arrow(dir)} ${fmt(Math.abs(deltaPct), 1)}%)`;
-      text(deltaStr, rightX, { align: "right", color: badColor, size: 10 });
+      const deltaAbs = Math.abs(current - target);
+      const deltaPct = current === 0 ? 0 : (Math.abs(current - target) / current) * 100;
+      const arrow = arrowEmoji(dir);
+      drawSegments([
+        { text: `(${arrow} `, color: COL.text, size: 10 },
+        { text: fmt(deltaAbs, decimals), color: numColor, bold: true, size: 10 },
+        { text: u, color: COL.text, size: 10 },
+        { text: `, ${arrow} `, color: COL.text, size: 10 },
+        { text: fmt(deltaPct, 1), color: numColor, bold: true, size: 10 },
+        { text: "%)", color: COL.text, size: 10 },
+      ], rightX, 10);
     }
     y += lineH - 2;
     doc.setDrawColor(220, 220, 230);
@@ -81,42 +142,47 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
     y += 6;
   };
 
+  // Composition row: kg first, then %, then triple-stat parens
   const compositionRow = (label: string, currentPct: number, targetPct: number) => {
     ensure(40);
     const currentKg = (currentPct / 100) * weightKg;
     const targetKg = (targetPct / 100) * weightKg;
-    const deltaPctSigned = targetPct - currentPct;
-    const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctSigned) / currentPct) * 100;
-    const deltaKgAbs = Math.abs(currentKg - targetKg);
-    const isOk = Math.abs(deltaPctSigned) <= 0.5;
-    const dir: Dir = isOk ? "ok" : deltaPctSigned > 0 ? "up" : "down";
-    const okColor: [number, number, number] = [40, 160, 80];
-    const badColor: [number, number, number] = [220, 60, 60];
-    const targetColor = isOk ? okColor : badColor;
+    const dir = dirByCurrentTarget(currentPct, targetPct, 0.5);
+    const numColor = colorOf(dir);
+    const arrow = arrowEmoji(dir);
 
-    text(label, margin, { color: [120, 120, 130], size: 11 });
+    text(label, margin, { color: COL.muted, size: 11 });
 
-    const currentStr = `${fmt(currentPct)} % - ${fmt(currentKg)} kg`;
-    const arrowStr = "  →  ";
-    const targetStr = `${fmt(targetPct)} % - ${fmt(targetKg)} kg`;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
     const rightX = pageW - margin;
-    const targetW = doc.getTextWidth(targetStr);
-    const arrowW = doc.getTextWidth(arrowStr);
-    const currentW = doc.getTextWidth(currentStr);
-    const targetX = rightX - targetW;
-    const arrowX = targetX - arrowW;
-    const currentX = arrowX - currentW;
-    text(currentStr, currentX, { size: 11 });
-    text(arrowStr, arrowX, { size: 11, color: [120, 120, 130] });
-    text(targetStr, targetX, { size: 11, bold: true, color: targetColor });
+    drawSegments([
+      { text: fmt(currentKg), color: numColor, bold: true },
+      { text: " kg - ", color: COL.text },
+      { text: fmt(currentPct), color: numColor, bold: true },
+      { text: " %", color: COL.text },
+      { text: "  →  ", color: COL.muted },
+      { text: "Στόχος: ", color: COL.muted },
+      { text: fmt(targetKg), color: numColor, bold: true },
+      { text: " kg - ", color: COL.text },
+      { text: fmt(targetPct), color: numColor, bold: true },
+      { text: " %", color: COL.text },
+    ], rightX);
     y += lineH;
 
-    if (isOk) {
-      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: okColor, size: 10 });
+    if (dir === "ok") {
+      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: COL.green, size: 10 });
     } else {
-      const deltaStr = `( ${arrow(dir)} ${fmt(Math.abs(deltaPctSigned))} %, ${arrow(dir)} ${fmt(remainingPct)}%, ${arrow(dir)} ${fmt(deltaKgAbs)} kg)`;
-      text(deltaStr, rightX, { align: "right", color: badColor, size: 10 });
+      const deltaKg = Math.abs(currentKg - targetKg);
+      const deltaPctPoints = Math.abs(currentPct - targetPct);
+      const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100;
+      drawSegments([
+        { text: `(${arrow} `, color: COL.text, size: 10 },
+        { text: fmt(deltaKg), color: numColor, bold: true, size: 10 },
+        { text: ` kg, ${arrow} `, color: COL.text, size: 10 },
+        { text: fmt(pctChange), color: numColor, bold: true, size: 10 },
+        { text: ` %, ${arrow} `, color: COL.text, size: 10 },
+        { text: fmt(deltaPctPoints), color: numColor, bold: true, size: 10 },
+        { text: "%)", color: COL.text, size: 10 },
+      ], rightX, 10);
     }
     y += lineH - 2;
     doc.setDrawColor(220, 220, 230);
@@ -136,26 +202,27 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
 
   text(`Ημερομηνία μέτρησης: ${dateLabel}`, margin, { bold: true, size: 12 });
   y += lineH + 4;
-  text(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm · Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, margin, { size: 10, color: [100, 100, 110] });
+  text(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm · Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, margin, { size: 10, color: COL.muted });
   y += lineH + 4;
 
   // Legend
-  text("Σημαίνουν:", margin, { bold: true, size: 10, color: [120, 120, 130] }); y += lineH;
-  text("(▼) Πρέπει να μειωθεί", margin, { size: 10, color: [220, 60, 60] }); y += lineH;
-  text("(▲) Πρέπει να αυξηθεί", margin, { size: 10, color: [60, 120, 220] }); y += lineH;
-  text("(✅) Στόχος επετεύχθη", margin, { size: 10, color: [40, 160, 80] }); y += lineH;
-  text("Κατηγορία: Τρέχον μέτρηση → Στόχος (Διαφορά, %, kg)", margin, { size: 10, color: [120, 120, 130] }); y += lineH;
+  text("Σημαίνουν:", margin, { bold: true, size: 10, color: COL.muted }); y += lineH;
+  text("(🔻) Πρέπει να μειωθεί", margin, { size: 10, color: COL.red }); y += lineH;
+  text("(🔺) Πρέπει να αυξηθεί", margin, { size: 10, color: COL.red }); y += lineH;
+  text("(✅) Στόχος επετεύχθη", margin, { size: 10, color: COL.green }); y += lineH;
+  text("Κατηγορία: Τρέχον μέτρηση → Στόχος: [Στόχος kg] - [Στόχος %] (Διαφορά kg, % Μεταβολής, Διαφορά Ποσοστιαίων Μονάδων)", margin, { size: 10, color: COL.muted });
+  y += lineH;
 
   // Σύσταση Σώματος
   sectionTitle("Σύσταση Σώματος");
-  scalarRow("Βάρος", report.weight.current, report.weight.target, report.weight.deltaAbs, report.weight.deltaPct, "kg");
+  scalarRow("Βάρος", report.weight.current, report.weight.target, "kg");
   if (report.bodyFat) compositionRow("Λίπος", report.bodyFat.current, report.bodyFat.target);
   if (report.water) compositionRow("Υγρά", report.water.current, report.water.target);
   if (report.muscle) compositionRow("Μύες", report.muscle.current, report.muscle.target);
   if (report.bone) compositionRow("Κόκαλα", report.bone.current, report.bone.target);
-  scalarRow("ΔΜΣ", report.bmi.current, report.bmi.target, report.bmi.deltaAbs, report.bmi.deltaPct, "μονάδες");
+  scalarRow("ΔΜΣ", report.bmi.current, report.bmi.target, "μονάδες");
   ensure(20);
-  text("Κατηγορία ΔΜΣ", margin, { color: [120, 120, 130], size: 11 });
+  text("Κατηγορία ΔΜΣ", margin, { color: COL.muted, size: 11 });
   text(report.bmiCategory, pageW - margin, { align: "right", size: 11, bold: true, color: [220, 130, 40] });
   y += lineH + 4;
 
@@ -163,7 +230,7 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
   if (Object.keys(report.measurements).length > 0) {
     sectionTitle("Μετρήσεις Σώματος");
     for (const [k, d] of Object.entries(report.measurements)) {
-      if (d) scalarRow(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "εκ.");
+      if (d) scalarRow(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, "εκ.");
     }
   }
 
@@ -171,22 +238,17 @@ export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: s
   if (Object.keys(report.ratios).length > 0) {
     sectionTitle("Αναλογίες Σώματος");
     for (const [k, d] of Object.entries(report.ratios)) {
-      if (d) scalarRow(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "", 2);
+      if (d) scalarRow(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, "", 2);
     }
   }
 
   // Μεταβολικά
   sectionTitle("Μεταβολικά Δεδομένα");
-  scalarRow("BMR", report.bmr.current, report.bmr.target,
-    report.bmr.target - report.bmr.current,
-    report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100,
-    "kcal", 0);
-  scalarRow("AMR", report.amr.current, report.amr.target,
-    report.amr.target - report.amr.current,
-    report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100,
-    "kcal", 0);
+  scalarRow("BMR", report.bmr.current, report.bmr.target, "kcal", 0);
+  scalarRow("AMR", report.amr.current, report.amr.target, "kcal", 0);
 
-  doc.save(`fitness-report-${dateLabel}.pdf`);
+  const blob = doc.output("blob");
+  void saveBlob(blob, `fitness-report-${dateLabel}.pdf`);
 }
 
 // ============ WORD EXPORT ============
@@ -204,52 +266,91 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
       children: [new TextRun({ text, bold: true, size: 32, color: "1A1A2E" })],
     });
 
-  const scalarParas = (label: string, current: number, target: number, deltaAbs: number, deltaPct: number, unit: string, decimals = 1): Paragraph[] => {
-    const dir = dirOf(deltaAbs, deltaPct);
-    const targetColor = dir === "ok" ? "28A050" : "DC3C3C";
+  const scalarParas = (label: string, current: number, target: number, unit: string, decimals = 1): Paragraph[] => {
+    const dir = dirByCurrentTarget(current, target);
+    const numCol = wcolorOf(dir);
     const u = unit ? ` ${unit}` : "";
     const main = new Paragraph({
       children: [
-        new TextRun({ text: `${label}    `, color: "707080", size: 22, font: "Calibri" }),
-        new TextRun({ text: `${fmt(current, decimals)}${u}`, size: 22, font: "Calibri" }),
-        new TextRun({ text: "  →  ", color: "707080", size: 22, font: "Calibri" }),
-        new TextRun({ text: `${fmt(target, decimals)}${u}`, bold: true, color: targetColor, size: 22, font: "Calibri" }),
+        new TextRun({ text: `${label}    `, color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(current, decimals), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: u, size: 22, font: "Calibri" }),
+        new TextRun({ text: "  →  ", color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: "Στόχος: ", color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(target, decimals), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: u, size: 22, font: "Calibri" }),
       ],
     });
-    const deltaText = dir === "ok"
-      ? "✅ Στόχος επετεύχθη"
-      : `( ${arrow(dir)} ${fmt(Math.abs(deltaAbs), decimals)}${u}, ${arrow(dir)} ${fmt(Math.abs(deltaPct), 1)}%)`;
-    const delta = new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: deltaText, color: dir === "ok" ? "28A050" : "DC3C3C", size: 20, font: "Calibri" })],
-    });
+    let delta: Paragraph;
+    if (dir === "ok") {
+      delta = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [new TextRun({ text: "✅ Στόχος επετεύχθη", color: WCOL.green, size: 20, font: "Calibri" })],
+      });
+    } else {
+      const arrow = arrowEmoji(dir);
+      const deltaAbs = Math.abs(current - target);
+      const deltaPct = current === 0 ? 0 : (Math.abs(current - target) / current) * 100;
+      delta = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [
+          new TextRun({ text: `(${arrow} `, size: 20, font: "Calibri" }),
+          new TextRun({ text: fmt(deltaAbs, decimals), bold: true, color: numCol, size: 20, font: "Calibri" }),
+          new TextRun({ text: `${u}, ${arrow} `, size: 20, font: "Calibri" }),
+          new TextRun({ text: fmt(deltaPct, 1), bold: true, color: numCol, size: 20, font: "Calibri" }),
+          new TextRun({ text: "%)", size: 20, font: "Calibri" }),
+        ],
+      });
+    }
     return [main, delta];
   };
 
   const compositionParas = (label: string, currentPct: number, targetPct: number): Paragraph[] => {
     const currentKg = (currentPct / 100) * weightKg;
     const targetKg = (targetPct / 100) * weightKg;
-    const deltaPctSigned = targetPct - currentPct;
-    const remainingPct = currentPct === 0 ? 0 : (Math.abs(deltaPctSigned) / currentPct) * 100;
-    const deltaKgAbs = Math.abs(currentKg - targetKg);
-    const isOk = Math.abs(deltaPctSigned) <= 0.5;
-    const dir: Dir = isOk ? "ok" : deltaPctSigned > 0 ? "up" : "down";
-    const targetColor = isOk ? "28A050" : "DC3C3C";
+    const dir = dirByCurrentTarget(currentPct, targetPct, 0.5);
+    const numCol = wcolorOf(dir);
+    const arrow = arrowEmoji(dir);
+
     const main = new Paragraph({
       children: [
-        new TextRun({ text: `${label}    `, color: "707080", size: 22, font: "Calibri" }),
-        new TextRun({ text: `${fmt(currentPct)} % - ${fmt(currentKg)} kg`, size: 22, font: "Calibri" }),
-        new TextRun({ text: "  →  ", color: "707080", size: 22, font: "Calibri" }),
-        new TextRun({ text: `${fmt(targetPct)} % - ${fmt(targetKg)} kg`, bold: true, color: targetColor, size: 22, font: "Calibri" }),
+        new TextRun({ text: `${label}    `, color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(currentKg), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: " kg - ", size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(currentPct), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: " %", size: 22, font: "Calibri" }),
+        new TextRun({ text: "  →  ", color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: "Στόχος: ", color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(targetKg), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: " kg - ", size: 22, font: "Calibri" }),
+        new TextRun({ text: fmt(targetPct), bold: true, color: numCol, size: 22, font: "Calibri" }),
+        new TextRun({ text: " %", size: 22, font: "Calibri" }),
       ],
     });
-    const deltaText = isOk
-      ? "✅ Στόχος επετεύχθη"
-      : `( ${arrow(dir)} ${fmt(Math.abs(deltaPctSigned))} %, ${arrow(dir)} ${fmt(remainingPct)}%, ${arrow(dir)} ${fmt(deltaKgAbs)} kg)`;
-    const delta = new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ text: deltaText, color: isOk ? "28A050" : "DC3C3C", size: 20, font: "Calibri" })],
-    });
+
+    let delta: Paragraph;
+    if (dir === "ok") {
+      delta = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [new TextRun({ text: "✅ Στόχος επετεύχθη", color: WCOL.green, size: 20, font: "Calibri" })],
+      });
+    } else {
+      const deltaKg = Math.abs(currentKg - targetKg);
+      const deltaPctPoints = Math.abs(currentPct - targetPct);
+      const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100;
+      delta = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [
+          new TextRun({ text: `(${arrow} `, size: 20, font: "Calibri" }),
+          new TextRun({ text: fmt(deltaKg), bold: true, color: numCol, size: 20, font: "Calibri" }),
+          new TextRun({ text: ` kg, ${arrow} `, size: 20, font: "Calibri" }),
+          new TextRun({ text: fmt(pctChange), bold: true, color: numCol, size: 20, font: "Calibri" }),
+          new TextRun({ text: ` %, ${arrow} `, size: 20, font: "Calibri" }),
+          new TextRun({ text: fmt(deltaPctPoints), bold: true, color: numCol, size: 20, font: "Calibri" }),
+          new TextRun({ text: "%)", size: 20, font: "Calibri" }),
+        ],
+      });
+    }
     return [main, delta];
   };
 
@@ -258,17 +359,17 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
     para(`${displayName}`, { size: 22, color: "666666", align: AlignmentType.CENTER }),
     para(""),
     para(`Ημερομηνία μέτρησης: ${dateLabel}`, { bold: true, size: 24 }),
-    para(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm`, { size: 20, color: "707080" }),
-    para(`Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, { size: 20, color: "707080" }),
+    para(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm`, { size: 20, color: WCOL.muted }),
+    para(`Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, { size: 20, color: WCOL.muted }),
     para(""),
-    para("Σημαίνουν:", { bold: true, size: 20, color: "707080" }),
-    para("(▼) Πρέπει να μειωθεί", { size: 20, color: "DC3C3C" }),
-    para("(▲) Πρέπει να αυξηθεί", { size: 20, color: "3C78DC" }),
-    para("(✅) Στόχος επετεύχθη", { size: 20, color: "28A050" }),
-    para("Κατηγορία: Τρέχον μέτρηση → Στόχος (Διαφορά, %, kg)", { size: 20, color: "707080" }),
+    para("Σημαίνουν:", { bold: true, size: 20, color: WCOL.muted }),
+    para("(🔻) Πρέπει να μειωθεί", { size: 20, color: WCOL.red }),
+    para("(🔺) Πρέπει να αυξηθεί", { size: 20, color: WCOL.red }),
+    para("(✅) Στόχος επετεύχθη", { size: 20, color: WCOL.green }),
+    para("Κατηγορία: Τρέχον μέτρηση → Στόχος: [Στόχος kg] - [Στόχος %] (Διαφορά kg, % Μεταβολής, Διαφορά Ποσοστιαίων Μονάδων)", { size: 20, color: WCOL.muted }),
 
     heading("Σύσταση Σώματος"),
-    ...scalarParas("Βάρος", report.weight.current, report.weight.target, report.weight.deltaAbs, report.weight.deltaPct, "kg"),
+    ...scalarParas("Βάρος", report.weight.current, report.weight.target, "kg"),
   ];
 
   if (report.bodyFat) children.push(...compositionParas("Λίπος", report.bodyFat.current, report.bodyFat.target));
@@ -276,10 +377,10 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
   if (report.muscle) children.push(...compositionParas("Μύες", report.muscle.current, report.muscle.target));
   if (report.bone) children.push(...compositionParas("Κόκαλα", report.bone.current, report.bone.target));
 
-  children.push(...scalarParas("ΔΜΣ", report.bmi.current, report.bmi.target, report.bmi.deltaAbs, report.bmi.deltaPct, "μονάδες"));
+  children.push(...scalarParas("ΔΜΣ", report.bmi.current, report.bmi.target, "μονάδες"));
   children.push(new Paragraph({
     children: [
-      new TextRun({ text: "Κατηγορία ΔΜΣ    ", color: "707080", size: 22, font: "Calibri" }),
+      new TextRun({ text: "Κατηγορία ΔΜΣ    ", color: WCOL.muted, size: 22, font: "Calibri" }),
       new TextRun({ text: report.bmiCategory, bold: true, color: "DC8228", size: 22, font: "Calibri" }),
     ],
   }));
@@ -287,26 +388,20 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
   if (Object.keys(report.measurements).length > 0) {
     children.push(heading("Μετρήσεις Σώματος"));
     for (const [k, d] of Object.entries(report.measurements)) {
-      if (d) children.push(...scalarParas(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "εκ."));
+      if (d) children.push(...scalarParas(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, "εκ."));
     }
   }
 
   if (Object.keys(report.ratios).length > 0) {
     children.push(heading("Αναλογίες Σώματος"));
     for (const [k, d] of Object.entries(report.ratios)) {
-      if (d) children.push(...scalarParas(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, d.deltaAbs, d.deltaPct, "", 2));
+      if (d) children.push(...scalarParas(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, "", 2));
     }
   }
 
   children.push(heading("Μεταβολικά Δεδομένα"));
-  children.push(...scalarParas("BMR", report.bmr.current, report.bmr.target,
-    report.bmr.target - report.bmr.current,
-    report.bmr.current === 0 ? 0 : ((report.bmr.target - report.bmr.current) / report.bmr.current) * 100,
-    "kcal", 0));
-  children.push(...scalarParas("AMR", report.amr.current, report.amr.target,
-    report.amr.target - report.amr.current,
-    report.amr.current === 0 ? 0 : ((report.amr.target - report.amr.current) / report.amr.current) * 100,
-    "kcal", 0));
+  children.push(...scalarParas("BMR", report.bmr.current, report.bmr.target, "kcal", 0));
+  children.push(...scalarParas("AMR", report.amr.current, report.amr.target, "kcal", 0));
 
   const docx = new Document({
     sections: [{
@@ -318,11 +413,11 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
   });
 
   const blob = await Packer.toBlob(docx);
-  saveAs(blob, `fitness-report-${dateLabel}.docx`);
+  await saveBlob(blob, `fitness-report-${dateLabel}.docx`);
 }
 
 
-// ============ DIET — κοινό κείμενο για PDF & Word ============
+// ============ DIET — κοινό κείμενο για PDF & Word (text-list, αυτούσιο) ============
 function dietLines(n: NutritionResult, dateLabel: string): string[] {
   const arrow = "🔺";
   const sign = (v: number) => (v > 0 ? `+${fmtKcal(v)}` : fmtKcal(v));
@@ -376,7 +471,8 @@ export function exportDietPDF(n: NutritionResult, dateLabel: string, displayName
       y += wrapped.length * 14;
     }
   }
-  doc.save(`diet-${dateLabel}.pdf`);
+  const blob = doc.output("blob");
+  void saveBlob(blob, `diet-${dateLabel}.pdf`);
 }
 
 export async function exportDietWord(n: NutritionResult, dateLabel: string, displayName: string) {
@@ -411,6 +507,5 @@ export async function exportDietWord(n: NutritionResult, dateLabel: string, disp
     }],
   });
   const blob = await Packer.toBlob(docx);
-  saveAs(blob, `diet-${dateLabel}.docx`);
+  await saveBlob(blob, `diet-${dateLabel}.docx`);
 }
-
