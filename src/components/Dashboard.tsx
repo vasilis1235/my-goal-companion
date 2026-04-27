@@ -1,10 +1,10 @@
-import { Droplet, Bone, User, Heart, Flame, Activity } from "lucide-react";
+import { Droplet, Bone, User, Heart, Flame, Activity, Dumbbell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAppPrefs } from "@/contexts/AppPreferences";
 import { displayWeight } from "@/lib/units";
 import { bmiCategoryKey } from "@/lib/i18n";
-import { FatCellsIcon, FlexBicepIcon } from "@/components/icons/CustomIcons";
+import { FatCellsIcon } from "@/components/icons/CustomIcons";
 import { format } from "date-fns";
 
 interface DashboardProps {
