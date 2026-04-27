@@ -132,7 +132,7 @@ export const Dashboard = ({
         <CardContent className="py-1">
           <StatRow icon={FatCellsIcon} label={t("dash.fat")} value={kgPctValue(bodyFat, weight)} variant="fat" />
           <StatRow icon={Droplet} label={t("dash.water")} value={kgPctValue(water, weight)} variant="water" />
-          <StatRow icon={FlexBicepIcon} label={t("dash.muscle")} value={kgPctValue(muscle, weight)} variant="muscle" />
+          <StatRow icon={Dumbbell} label={t("dash.muscle")} value={kgPctValue(muscle, weight)} variant="muscle" />
           <StatRow icon={Bone} label={t("dash.bone")} value={kgPctValue(bone, weight)} variant="bone" />
           <StatRow
             icon={User}
