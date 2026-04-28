@@ -22,7 +22,7 @@ const EL: Dict = {
   // Nav
   "nav.home": "Αρχική",
   "nav.report": "Αναφορά",
-  "nav.progress": "Progress",
+  "nav.progress": "Πρόοδος",
   "nav.diet": "Διατροφή",
   "nav.history": "Ιστορικό",
   // Auth
