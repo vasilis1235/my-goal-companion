@@ -210,6 +210,7 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
     if (dir === "ok") {
       delta = new Paragraph({
         alignment: AlignmentType.RIGHT,
+        spacing: { after: 80 },
         children: [new TextRun({ text: "✅ Στόχος επετεύχθη", color: WCOL.green, size: 20, font: "Calibri" })],
       });
     } else {
@@ -218,6 +219,7 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
       const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100;
       delta = new Paragraph({
         alignment: AlignmentType.RIGHT,
+        spacing: { after: 80 },
         children: [
           new TextRun({ text: `(${arrow} `, size: 20, font: "Calibri" }),
           new TextRun({ text: fmt(deltaKg), bold: true, color: numCol, size: 20, font: "Calibri" }),
