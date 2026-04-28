@@ -58,19 +58,19 @@ const ScalarRow = ({
   const u = unit ? ` ${unit}` : "";
 
   return (
-    <div className="py-3 border-b border-border/50 last:border-0">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="text-base text-muted-foreground min-w-[140px]">{label}</span>
-        <div className="flex-1 text-right text-base">
+    <div className="py-2.5 border-b border-border/50 last:border-0">
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground min-w-[120px]">{label}</span>
+        <div className="flex-1 text-right text-sm">
           <Num dir={dir}>{fmt(current, decimals)}</Num>
           {unit && <span>{u}</span>}
-          <span className="text-muted-foreground mx-2">→</span>
+          <span className="text-muted-foreground mx-1.5">→</span>
           <span className="text-muted-foreground">Στόχος: </span>
           <Num dir={dir}>{fmt(target, decimals)}</Num>
           {unit && <span>{u}</span>}
         </div>
       </div>
-      <div className="text-right text-sm mt-0.5">
+      <div className="text-right text-xs mt-0.5">
         {dir === "ok" ? (
           <span className={colorClass(dir)}>✅ Στόχος επετεύχθη</span>
         ) : (
@@ -102,15 +102,15 @@ const CompositionRow = ({
   const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100; // % μεταβολής
 
   return (
-    <div className="py-3 border-b border-border/50 last:border-0">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="text-base text-muted-foreground min-w-[140px]">{label}</span>
-        <div className="flex-1 text-right text-base">
+    <div className="py-2.5 border-b border-border/50 last:border-0">
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground min-w-[120px]">{label}</span>
+        <div className="flex-1 text-right text-sm">
           <Num dir={dir}>{fmt(currentKg)}</Num>
           <span> kg - </span>
           <Num dir={dir}>{fmt(currentPct)}</Num>
           <span> %</span>
-          <span className="text-muted-foreground mx-2">→</span>
+          <span className="text-muted-foreground mx-1.5">→</span>
           <span className="text-muted-foreground">Στόχος: </span>
           <Num dir={dir}>{fmt(targetKg)}</Num>
           <span> kg - </span>
@@ -118,7 +118,7 @@ const CompositionRow = ({
           <span> %</span>
         </div>
       </div>
-      <div className="text-right text-sm mt-0.5">
+      <div className="text-right text-xs mt-0.5">
         {dir === "ok" ? (
           <span className={colorClass(dir)}>✅ Στόχος επετεύχθη</span>
         ) : (
@@ -135,9 +135,9 @@ const CompositionRow = ({
 
 export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }: ReportViewProps) => {
   const { t } = useAppPrefs();
-  const handlePDF = () => {
+  const handlePDF = async () => {
     try {
-      exportPDF(profile, report, dateLabel, displayName, weightKg);
+      await exportPDF(profile, report, dateLabel, displayName, weightKg, "report-export-root");
       toast.success(t("export.pdfOk"));
     } catch (e) {
       toast.error("PDF error");
@@ -157,6 +157,7 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
 
   return (
     <div className="space-y-4">
+      <div id="report-export-root" className="space-y-4 bg-background p-2">
       <h2 className="text-3xl font-bold">{t("report.title")}</h2>
 
       {/* Date */}
@@ -253,6 +254,7 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
           <ScalarRow label="AMR" current={report.amr.current} target={report.amr.target} unit="kcal" decimals={0} />
         </CardContent>
       </Card>
+      </div>
 
       {/* Export */}
       <Card>
