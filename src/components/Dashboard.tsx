@@ -23,16 +23,16 @@ interface DashboardProps {
 
 type IconLike = React.ComponentType<any>;
 
-// All icons get a colored circular background like the BMR icon — except Muscle keeps the dumbbell
+// Each icon gets a unique colored ring. All different, all circular.
 const ringColorClass = {
-  fat: "bg-orange-500/15 text-orange-500",
-  water: "bg-info/15 text-info",
-  muscle: "bg-success/15 text-success",
-  bone: "bg-amber-700/15 text-amber-700 dark:text-amber-500",
-  bmr: "bg-orange-500/15 text-orange-500",
-  amr: "bg-yellow-500/15 text-yellow-500",
-  bmi: "bg-info/15 text-info",
-  category: "bg-warning/15 text-warning",
+  fat:      "bg-orange-500/15 text-orange-500",
+  water:    "bg-sky-500/15 text-sky-500",
+  muscle:   "bg-emerald-500/15 text-emerald-500",
+  bone:     "bg-amber-700/15 text-amber-700 dark:text-amber-500",
+  bmi:      "bg-indigo-500/15 text-indigo-500",
+  category: "bg-fuchsia-500/15 text-fuchsia-500",
+  bmr:      "bg-rose-500/15 text-rose-500",
+  amr:      "bg-yellow-500/15 text-yellow-500",
 } as const;
 
 const StatRow = ({
