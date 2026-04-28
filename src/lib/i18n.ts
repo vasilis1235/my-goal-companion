@@ -467,10 +467,10 @@ export function bmiCategoryKey(bmi: number): string {
 }
 
 // Activity labels localized
-export const ACTIVITY_KEYS: Record<string, { el: string; en: string }> = {
-  sedentary: { el: "Καθιστική", en: "Sedentary" },
-  light: { el: "Ελαφριά", en: "Light" },
-  moderate: { el: "Μέτρια", en: "Moderate" },
-  active: { el: "Έντονη", en: "Active" },
-  very_active: { el: "Πολύ έντονη", en: "Very active" },
+export const ACTIVITY_KEYS: Record<string, Record<Lang, string>> = {
+  sedentary:   { el: "Καθιστική",    en: "Sedentary",   de: "Sitzend",      fr: "Sédentaire", it: "Sedentaria" },
+  light:       { el: "Ελαφριά",      en: "Light",       de: "Leicht",       fr: "Légère",     it: "Leggera" },
+  moderate:    { el: "Μέτρια",       en: "Moderate",    de: "Moderat",      fr: "Modérée",    it: "Moderata" },
+  active:      { el: "Έντονη",       en: "Active",      de: "Aktiv",        fr: "Active",     it: "Attiva" },
+  very_active: { el: "Πολύ έντονη",  en: "Very active", de: "Sehr aktiv",   fr: "Très active",it: "Molto attiva" },
 };
