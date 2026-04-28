@@ -29,7 +29,7 @@ const dirByCurrentTarget = (current: number, target: number, tol = 0.5): Dir => 
 };
 
 const colorClass = (dir: Dir) =>
-  dir === "ok" ? "text-success" : dir === "down" ? "text-destructive" : "text-info";
+  dir === "ok" ? "text-success" : dir === "down" ? "text-destructive" : "text-sky-400";
 
 const arrowEmoji = (dir: Dir) => (dir === "ok" ? "✅" : dir === "down" ? "🔻" : "🔺");
 
