@@ -254,6 +254,7 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
           <ScalarRow label="AMR" current={report.amr.current} target={report.amr.target} unit="kcal" decimals={0} />
         </CardContent>
       </Card>
+      </div>
 
       {/* Export */}
       <Card>
