@@ -58,19 +58,19 @@ const ScalarRow = ({
   const u = unit ? ` ${unit}` : "";
 
   return (
-    <div className="py-3 border-b border-border/50 last:border-0">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="text-base text-muted-foreground min-w-[140px]">{label}</span>
-        <div className="flex-1 text-right text-base">
+    <div className="py-2.5 border-b border-border/50 last:border-0">
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground min-w-[120px]">{label}</span>
+        <div className="flex-1 text-right text-sm">
           <Num dir={dir}>{fmt(current, decimals)}</Num>
           {unit && <span>{u}</span>}
-          <span className="text-muted-foreground mx-2">→</span>
+          <span className="text-muted-foreground mx-1.5">→</span>
           <span className="text-muted-foreground">Στόχος: </span>
           <Num dir={dir}>{fmt(target, decimals)}</Num>
           {unit && <span>{u}</span>}
         </div>
       </div>
-      <div className="text-right text-sm mt-0.5">
+      <div className="text-right text-xs mt-0.5">
         {dir === "ok" ? (
           <span className={colorClass(dir)}>✅ Στόχος επετεύχθη</span>
         ) : (
