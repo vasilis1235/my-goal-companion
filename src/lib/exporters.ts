@@ -167,6 +167,7 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
       const deltaPct = current === 0 ? 0 : (Math.abs(current - target) / current) * 100;
       delta = new Paragraph({
         alignment: AlignmentType.RIGHT,
+        spacing: { after: 80 },
         children: [
           new TextRun({ text: `(${arrow} `, size: 20, font: "Calibri" }),
           new TextRun({ text: fmt(deltaAbs, decimals), bold: true, color: numCol, size: 20, font: "Calibri" }),
