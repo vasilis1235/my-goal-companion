@@ -135,9 +135,9 @@ const CompositionRow = ({
 
 export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }: ReportViewProps) => {
   const { t } = useAppPrefs();
-  const handlePDF = () => {
+  const handlePDF = async () => {
     try {
-      exportPDF(profile, report, dateLabel, displayName, weightKg);
+      await exportPDF(profile, report, dateLabel, displayName, weightKg, "report-export-root");
       toast.success(t("export.pdfOk"));
     } catch (e) {
       toast.error("PDF error");
@@ -157,6 +157,7 @@ export const ReportView = ({ profile, report, dateLabel, displayName, weightKg }
 
   return (
     <div className="space-y-4">
+      <div id="report-export-root" className="space-y-4 bg-background p-2">
       <h2 className="text-3xl font-bold">{t("report.title")}</h2>
 
       {/* Date */}
