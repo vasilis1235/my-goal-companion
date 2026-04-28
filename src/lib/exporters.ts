@@ -158,6 +158,7 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
     if (dir === "ok") {
       delta = new Paragraph({
         alignment: AlignmentType.RIGHT,
+        spacing: { after: 80 },
         children: [new TextRun({ text: "✅ Στόχος επετεύχθη", color: WCOL.green, size: 20, font: "Calibri" })],
       });
     } else {
