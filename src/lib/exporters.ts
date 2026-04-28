@@ -51,205 +51,74 @@ async function saveBlob(blob: Blob, filename: string) {
   saveAs(blob, filename);
 }
 
-// ============ PDF EXPORT ============
-export function exportPDF(profile: UserProfile, report: FullReport, dateLabel: string, displayName: string, weightKg: number) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  let y = 50;
-  const margin = 40;
-  const lineH = 16;
+// ============ PDF EXPORT — renders the on-screen ReportView DOM via html2canvas ============
+// This guarantees pixel-perfect parity with the UI and avoids jsPDF's font limits
+// (no more broken Greek / emoji symbols).
+export async function exportPDF(
+  profile: UserProfile,
+  report: FullReport,
+  dateLabel: string,
+  displayName: string,
+  weightKg: number,
+  domId?: string,
+) {
+  const el = domId ? document.getElementById(domId) : null;
 
-  const ensure = (extra = 0) => { if (y + extra > 800) { doc.addPage(); y = 50; } };
-
-  const text = (s: string, x: number, opts: { bold?: boolean; size?: number; color?: [number, number, number]; align?: "left" | "right" } = {}) => {
-    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
-    doc.setFontSize(opts.size ?? 10);
-    if (opts.color) doc.setTextColor(...opts.color); else doc.setTextColor(...COL.text);
-    doc.text(s, x, y, { align: opts.align ?? "left" });
-  };
-
-  const sectionTitle = (title: string) => {
-    y += 12; ensure(28);
-    text(title, margin, { bold: true, size: 16 });
-    y += 6;
-    doc.setDrawColor(60, 60, 80);
-    doc.line(margin, y, pageW - margin, y);
-    y += 14;
-  };
-
-  // Right-aligned segmented row: places segments with mixed colors right-to-left.
-  type Seg = { text: string; color?: [number, number, number]; bold?: boolean; size?: number };
-  const drawSegments = (segments: Seg[], rightX: number, defaultSize = 11) => {
-    let x = rightX;
-    // Compute widths first
-    const withWidth = segments.map((s) => {
-      doc.setFont("helvetica", s.bold ? "bold" : "normal");
-      doc.setFontSize(s.size ?? defaultSize);
-      return { ...s, width: doc.getTextWidth(s.text) };
+  if (el) {
+    const bg = getComputedStyle(document.body).backgroundColor || "#ffffff";
+    const canvas = await html2canvas(el, {
+      backgroundColor: bg,
+      scale: 2,
+      useCORS: true,
+      logging: false,
     });
-    // Place from right
-    for (let i = withWidth.length - 1; i >= 0; i--) {
-      const s = withWidth[i];
-      x -= s.width;
-    }
-    let cursor = x;
-    for (const s of withWidth) {
-      doc.setFont("helvetica", s.bold ? "bold" : "normal");
-      doc.setFontSize(s.size ?? defaultSize);
-      doc.setTextColor(...(s.color ?? COL.text));
-      doc.text(s.text, cursor, y);
-      cursor += s.width;
-    }
-  };
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
 
-  // Scalar row: kg-style or any unit (e.g. "Βάρος 75.0 kg → Στόχος: 70.0 kg" + delta line)
-  const scalarRow = (label: string, current: number, target: number, unit: string, decimals = 1) => {
-    ensure(40);
-    const dir = dirByCurrentTarget(current, target);
-    const numColor = colorOf(dir);
-    const u = unit ? ` ${unit}` : "";
+    const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW - 40;
+    const imgH = (canvas.height * imgW) / canvas.width;
 
-    text(label, margin, { color: COL.muted, size: 11 });
-
-    const rightX = pageW - margin;
-    drawSegments([
-      { text: fmt(current, decimals), color: numColor, bold: true },
-      { text: u, color: COL.text },
-      { text: "  →  ", color: COL.muted },
-      { text: "Στόχος: ", color: COL.muted },
-      { text: fmt(target, decimals), color: numColor, bold: true },
-      { text: u, color: COL.text },
-    ], rightX);
-    y += lineH;
-
-    if (dir === "ok") {
-      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: COL.green, size: 10 });
+    if (imgH <= pageH - 40) {
+      pdf.addImage(imgData, "JPEG", 20, 20, imgW, imgH, undefined, "FAST");
     } else {
-      const deltaAbs = Math.abs(current - target);
-      const deltaPct = current === 0 ? 0 : (Math.abs(current - target) / current) * 100;
-      const arrow = arrowEmoji(dir);
-      drawSegments([
-        { text: `(${arrow} `, color: COL.text, size: 10 },
-        { text: fmt(deltaAbs, decimals), color: numColor, bold: true, size: 10 },
-        { text: u, color: COL.text, size: 10 },
-        { text: `, ${arrow} `, color: COL.text, size: 10 },
-        { text: fmt(deltaPct, 1), color: numColor, bold: true, size: 10 },
-        { text: "%)", color: COL.text, size: 10 },
-      ], rightX, 10);
+      // Split image across multiple pages
+      const pageContentH = pageH - 40;
+      const ratio = imgW / canvas.width; // px -> pt
+      const pxPerPage = pageContentH / ratio;
+      let sY = 0;
+      while (sY < canvas.height) {
+        const sliceH = Math.min(pxPerPage, canvas.height - sY);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = sliceH;
+        const ctx = slice.getContext("2d")!;
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, sY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const sliceData = slice.toDataURL("image/jpeg", 0.92);
+        pdf.addImage(sliceData, "JPEG", 20, 20, imgW, sliceH * ratio, undefined, "FAST");
+        sY += sliceH;
+        if (sY < canvas.height) pdf.addPage();
+      }
     }
-    y += lineH - 2;
-    doc.setDrawColor(220, 220, 230);
-    doc.line(margin, y, pageW - margin, y);
-    y += 6;
-  };
 
-  // Composition row: kg first, then %, then triple-stat parens
-  const compositionRow = (label: string, currentPct: number, targetPct: number) => {
-    ensure(40);
-    const currentKg = (currentPct / 100) * weightKg;
-    const targetKg = (targetPct / 100) * weightKg;
-    const dir = dirByCurrentTarget(currentPct, targetPct, 0.5);
-    const numColor = colorOf(dir);
-    const arrow = arrowEmoji(dir);
-
-    text(label, margin, { color: COL.muted, size: 11 });
-
-    const rightX = pageW - margin;
-    drawSegments([
-      { text: fmt(currentKg), color: numColor, bold: true },
-      { text: " kg - ", color: COL.text },
-      { text: fmt(currentPct), color: numColor, bold: true },
-      { text: " %", color: COL.text },
-      { text: "  →  ", color: COL.muted },
-      { text: "Στόχος: ", color: COL.muted },
-      { text: fmt(targetKg), color: numColor, bold: true },
-      { text: " kg - ", color: COL.text },
-      { text: fmt(targetPct), color: numColor, bold: true },
-      { text: " %", color: COL.text },
-    ], rightX);
-    y += lineH;
-
-    if (dir === "ok") {
-      text("✅ Στόχος επετεύχθη", rightX, { align: "right", color: COL.green, size: 10 });
-    } else {
-      const deltaKg = Math.abs(currentKg - targetKg);
-      const deltaPctPoints = Math.abs(currentPct - targetPct);
-      const pctChange = currentPct === 0 ? 0 : (Math.abs(currentPct - targetPct) / currentPct) * 100;
-      drawSegments([
-        { text: `(${arrow} `, color: COL.text, size: 10 },
-        { text: fmt(deltaKg), color: numColor, bold: true, size: 10 },
-        { text: ` kg, ${arrow} `, color: COL.text, size: 10 },
-        { text: fmt(pctChange), color: numColor, bold: true, size: 10 },
-        { text: ` %, ${arrow} `, color: COL.text, size: 10 },
-        { text: fmt(deltaPctPoints), color: numColor, bold: true, size: 10 },
-        { text: "%)", color: COL.text, size: 10 },
-      ], rightX, 10);
-    }
-    y += lineH - 2;
-    doc.setDrawColor(220, 220, 230);
-    doc.line(margin, y, pageW - margin, y);
-    y += 6;
-  };
-
-  // Header
-  doc.setFillColor(15, 20, 40);
-  doc.rect(0, 0, pageW, 70, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-  doc.text("Αναφορά", margin, 35);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-  doc.text(`${displayName}`, margin, 55);
-  y = 100;
-
-  text(`Ημερομηνία μέτρησης: ${dateLabel}`, margin, { bold: true, size: 12 });
-  y += lineH + 4;
-  text(`Φύλο: ${profile.sex === "male" ? "Άντρας" : "Γυναίκα"} · Ηλικία: ${profile.age} · Ύψος: ${profile.height_cm} cm · Δραστηριότητα: ${ACTIVITY_LABELS[profile.activity_level]}`, margin, { size: 10, color: COL.muted });
-  y += lineH + 4;
-
-  // Legend
-  text("Σημαίνουν:", margin, { bold: true, size: 10, color: COL.muted }); y += lineH;
-  text("(🔻) Πρέπει να μειωθεί", margin, { size: 10, color: COL.red }); y += lineH;
-  text("(🔺) Πρέπει να αυξηθεί", margin, { size: 10, color: COL.red }); y += lineH;
-  text("(✅) Στόχος επετεύχθη", margin, { size: 10, color: COL.green }); y += lineH;
-  text("Κατηγορία: Τρέχον μέτρηση → Στόχος: [Στόχος kg] - [Στόχος %] (Διαφορά kg, % Μεταβολής, Διαφορά Ποσοστιαίων Μονάδων)", margin, { size: 10, color: COL.muted });
-  y += lineH;
-
-  // Σύσταση Σώματος
-  sectionTitle("Σύσταση Σώματος");
-  scalarRow("Βάρος", report.weight.current, report.weight.target, "kg");
-  if (report.bodyFat) compositionRow("Λίπος", report.bodyFat.current, report.bodyFat.target);
-  if (report.water) compositionRow("Υγρά", report.water.current, report.water.target);
-  if (report.muscle) compositionRow("Μύες", report.muscle.current, report.muscle.target);
-  if (report.bone) compositionRow("Κόκαλα", report.bone.current, report.bone.target);
-  scalarRow("ΔΜΣ", report.bmi.current, report.bmi.target, "μονάδες");
-  ensure(20);
-  text("Κατηγορία ΔΜΣ", margin, { color: COL.muted, size: 11 });
-  text(report.bmiCategory, pageW - margin, { align: "right", size: 11, bold: true, color: [220, 130, 40] });
-  y += lineH + 4;
-
-  // Μετρήσεις
-  if (Object.keys(report.measurements).length > 0) {
-    sectionTitle("Μετρήσεις Σώματος");
-    for (const [k, d] of Object.entries(report.measurements)) {
-      if (d) scalarRow(MEASUREMENT_LABELS[k as keyof typeof MEASUREMENT_LABELS], d.current, d.target, "εκ.");
-    }
+    const blob = pdf.output("blob");
+    await saveBlob(blob, `fitness-report-${dateLabel}.pdf`);
+    return;
   }
 
-  // Αναλογίες
-  if (Object.keys(report.ratios).length > 0) {
-    sectionTitle("Αναλογίες Σώματος");
-    for (const [k, d] of Object.entries(report.ratios)) {
-      if (d) scalarRow(RATIO_LABELS[k as keyof typeof RATIO_LABELS], d.current, d.target, "", 2);
-    }
-  }
-
-  // Μεταβολικά
-  sectionTitle("Μεταβολικά Δεδομένα");
-  scalarRow("BMR", report.bmr.current, report.bmr.target, "kcal", 0);
-  scalarRow("AMR", report.amr.current, report.amr.target, "kcal", 0);
-
-  const blob = doc.output("blob");
-  void saveBlob(blob, `fitness-report-${dateLabel}.pdf`);
+  // Fallback (no DOM available): minimal text PDF
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.text(`Report — ${displayName}`, 40, 60);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.text(`Date: ${dateLabel}`, 40, 80);
+  const blob = pdf.output("blob");
+  await saveBlob(blob, `fitness-report-${dateLabel}.pdf`);
 }
 
 // ============ WORD EXPORT ============
