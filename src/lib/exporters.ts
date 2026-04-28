@@ -141,8 +141,11 @@ export async function exportWord(profile: UserProfile, report: FullReport, dateL
     const numCol = wcolorOf(dir);
     const u = unit ? ` ${unit}` : "";
     const main = new Paragraph({
+      spacing: { before: 120, after: 40 },
+      tabStops: [{ type: "right" as any, position: 9000 }],
       children: [
-        new TextRun({ text: `${label}    `, color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: label, color: WCOL.muted, size: 22, font: "Calibri" }),
+        new TextRun({ text: "\t", size: 22, font: "Calibri" }),
         new TextRun({ text: fmt(current, decimals), bold: true, color: numCol, size: 22, font: "Calibri" }),
         new TextRun({ text: u, size: 22, font: "Calibri" }),
         new TextRun({ text: "  →  ", color: WCOL.muted, size: 22, font: "Calibri" }),
