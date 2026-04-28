@@ -25,10 +25,10 @@ const COL = {
 const colorOf = (d: Dir): [number, number, number] =>
   d === "ok" ? COL.green : d === "down" ? COL.red : COL.blue;
 
-// Word colors (hex)
+// Word colors (hex) — match UI semantic tokens
 const WCOL = {
   red: "DC3C3C",
-  blue: "3C82DC",
+  blue: "38BDF8",   // sky-400 (γαλάζιο)
   green: "28A050",
   muted: "707080",
   text: "1A1A1E",
