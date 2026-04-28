@@ -63,8 +63,8 @@ export const AppPreferencesProvider = ({ children }: { children: ReactNode }) =>
   }, []);
 
   const hydratePrefs = useCallback((p: { language?: string | null; units?: string | null }) => {
-    if (p.language && (p.language === "el" || p.language === "en")) {
-      setLangState(p.language);
+    if (p.language && ["el", "en", "de", "fr", "it"].includes(p.language)) {
+      setLangState(p.language as Lang);
       localStorage.setItem(LS_LANG, p.language);
     }
     if (p.units && (p.units === "metric" || p.units === "imperial")) {
