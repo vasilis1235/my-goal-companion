@@ -1,5 +1,6 @@
 // Εξαγωγή αναφοράς & διατροφικών στόχων σε PDF & Word
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
 import { FullReport, MEASUREMENT_LABELS, RATIO_LABELS, UserProfile, ACTIVITY_LABELS } from "./calculations";
