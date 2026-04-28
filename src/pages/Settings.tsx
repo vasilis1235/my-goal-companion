@@ -54,11 +54,14 @@ const Settings = () => {
             <CardTitle className="text-base">{t("settings.language")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Select value={lang} onValueChange={(v) => setLang(v as "el" | "en")}>
+            <Select value={lang} onValueChange={(v) => setLang(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="el">Ελληνικά</SelectItem>
                 <SelectItem value="en">English</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="it">Italiano</SelectItem>
               </SelectContent>
             </Select>
           </CardContent>
