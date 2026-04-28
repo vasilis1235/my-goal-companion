@@ -1,5 +1,5 @@
-// Minimal i18n για EL/EN
-export type Lang = "el" | "en";
+// i18n για EL/EN/DE/FR/IT
+export type Lang = "el" | "en" | "de" | "fr" | "it";
 
 type Dict = Record<string, string>;
 
