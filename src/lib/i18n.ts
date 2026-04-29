@@ -141,6 +141,34 @@ const EL: Dict = {
   "export.word": "Word",
   "export.pdfOk": "PDF δημιουργήθηκε!",
   "export.wordOk": "Word δημιουργήθηκε!",
+  // Hub categories
+  "hub.title": "Επίλεξε Κατηγορία",
+  "cat.home": "Αρχική Οθόνη",
+  "cat.body": "Σωματική Σύσταση",
+  "cat.nutrition": "Διατροφή",
+  "cat.exercise": "Άσκηση",
+  "cat.assessment": "Αξιολόγηση",
+  "cat.home.desc": "Σύντομα διαθέσιμη",
+  "cat.body.desc": "Μετρήσεις, αναφορά, πρόοδος",
+  "cat.nutrition.desc": "Στόχοι, γεύματα, ιστορικό",
+  "cat.exercise.desc": "Smart Trainer & ασκήσεις",
+  "cat.assessment.desc": "Τελική ανάλυση & συμπεράσματα",
+  // Body sub-tabs
+  "body.tab.home": "Αρχική Σώματος",
+  "body.tab.report": "Αναφορά",
+  "body.tab.progress": "Πρόοδος",
+  "body.tab.history": "Ιστορικό Μετρήσεων",
+  // Nutrition sub-tabs
+  "nut.tab.goals": "Διατροφικοί Στόχοι",
+  "nut.tab.tracker": "Ημερολόγιο Γευμάτων",
+  "nut.tab.history": "Ιστορικό Διατροφής",
+  // Exercise sub-tabs
+  "ex.tab.assessment": "Αξιολόγηση",
+  "ex.tab.library": "Βιβλιοθήκη",
+  "ex.tab.plan": "Πλάνο",
+  // Placeholders
+  "ph.soon": "Σύντομα διαθέσιμη",
+  "ph.desc": "Η ενότητα χτίζεται. Σε επόμενη ενημέρωση.",
 };
 
 const EN: Dict = {
@@ -267,6 +295,29 @@ const EN: Dict = {
   "export.word": "Word",
   "export.pdfOk": "PDF generated!",
   "export.wordOk": "Word generated!",
+  "hub.title": "Choose Category",
+  "cat.home": "Home Screen",
+  "cat.body": "Body Composition",
+  "cat.nutrition": "Nutrition",
+  "cat.exercise": "Exercise",
+  "cat.assessment": "Assessment",
+  "cat.home.desc": "Coming soon",
+  "cat.body.desc": "Measurements, report, progress",
+  "cat.nutrition.desc": "Goals, meals, history",
+  "cat.exercise.desc": "Smart Trainer & exercises",
+  "cat.assessment.desc": "Final analysis & insights",
+  "body.tab.home": "Body Home",
+  "body.tab.report": "Report",
+  "body.tab.progress": "Progress",
+  "body.tab.history": "Measurement History",
+  "nut.tab.goals": "Nutrition Goals",
+  "nut.tab.tracker": "Food Tracker",
+  "nut.tab.history": "Nutrition History",
+  "ex.tab.assessment": "Assessment",
+  "ex.tab.library": "Library",
+  "ex.tab.plan": "Plan",
+  "ph.soon": "Coming soon",
+  "ph.desc": "This section is being built. Check back later.",
 };
 
 // German, French, Italian: start from EN and override translated keys

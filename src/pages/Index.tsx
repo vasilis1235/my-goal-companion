@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Construction } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CoachChat } from "@/components/CoachChat";
-import { BottomNav, Tab } from "@/components/BottomNav";
 import { Dashboard } from "@/components/Dashboard";
 import { NewMeasurementForm, NewMeasurementValues } from "@/components/NewMeasurementForm";
 import { ReportView } from "@/components/ReportView";
@@ -16,6 +17,8 @@ import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { SideMenu } from "@/components/SideMenu";
 import { ProgressPage } from "@/components/ProgressPage";
 import { DietPage } from "@/components/DietPage";
+import { CategoryHub, Category } from "@/components/CategoryHub";
+import { SectionShell } from "@/components/SectionShell";
 import {
   ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement,
   buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi,
@@ -46,12 +49,26 @@ interface ProfileRow {
 
 interface GoalRow { target_weight_kg: number; target_date: string | null; }
 
+const Placeholder = ({ title, desc }: { title: string; desc?: string }) => {
+  const { t } = useAppPrefs();
+  return (
+    <Card>
+      <CardContent className="py-12 flex flex-col items-center text-center gap-2">
+        <Construction className="w-10 h-10 text-warning" />
+        <div className="font-semibold">{title}</div>
+        <div className="text-sm text-muted-foreground max-w-md">{desc ?? t("ph.desc")}</div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const { t, hydratePrefs } = useAppPrefs();
-  const [tab, setTab] = useState<Tab>("home");
+  const [category, setCategory] = useState<Category | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [bodyTab, setBodyTab] = useState<"home" | "report" | "progress" | "history">("home");
   const [entries, setEntries] = useState<FullEntry[]>([]);
   const [nutrition, setNutrition] = useState<NutritionEntry[]>([]);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
@@ -142,7 +159,7 @@ const Index = () => {
     toast.success(t("common.save") + " ✓");
     setShowNewForm(false);
     await loadAll();
-    setTab("home");
+    setBodyTab("home");
   };
 
   const deleteEntry = async (id: string) => {
@@ -157,7 +174,7 @@ const Index = () => {
     loadAll();
   };
 
-  const viewReport = (id: string) => { setReportEntryId(id); setTab("report"); };
+  const viewReport = (id: string) => { setReportEntryId(id); setBodyTab("report"); };
 
   const reportEntry = reportEntryId ? entries.find((e) => e.id === reportEntryId) : latest;
 
@@ -203,9 +220,185 @@ const Index = () => {
     bone_pct: latest.bone_pct != null ? Number(latest.bone_pct) : null,
   } : null;
 
+  const goHub = () => {
+    setCategory(null);
+    setShowNewForm(false);
+    setReportEntryId(null);
+    setBodyTab("home");
+  };
+
+  // ----- Renderers per category -----
+
+  const renderBody = () => {
+    const dashboardEl = (
+      <Dashboard
+        weight={latest ? Number(latest.weight_kg) : null}
+        targetWeight={targetWeight}
+        bodyFat={latest?.body_fat_pct != null ? Number(latest.body_fat_pct) : null}
+        water={latest?.water_pct != null ? Number(latest.water_pct) : null}
+        muscle={latest?.muscle_pct != null ? Number(latest.muscle_pct) : null}
+        bone={latest?.bone_pct != null ? Number(latest.bone_pct) : null}
+        bmr={dashboardBmr}
+        amr={dashboardAmr}
+        bmi={dashboardBmi}
+        progress={progress}
+        measuredAt={latest?.recorded_at ?? null}
+      />
+    );
+
+    const reportEl = showNewForm ? (
+      <NewMeasurementForm
+        initial={{
+          sex: profile?.sex ?? "male",
+          age: profile?.age ?? null,
+          height_cm: profile?.height_cm ?? null,
+          activity_level: profile?.activity_level ?? "moderate",
+        }}
+        onSave={handleSaveMeasurement}
+      />
+    ) : reportEntry && userProfile ? (
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setShowNewForm(true)}>
+            <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
+          </Button>
+        </div>
+        <ReportView
+          profile={userProfile}
+          report={(() => {
+            const r = buildReport(userProfile, reportEntry as Measurement);
+            if (reportEntry.bmr_kcal != null) r.bmr.current = Math.round(Number(reportEntry.bmr_kcal));
+            if (reportEntry.amr_kcal != null) r.amr.current = Math.round(Number(reportEntry.amr_kcal));
+            return r;
+          })()}
+          dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
+          displayName={profile?.display_name ?? user?.email ?? ""}
+          weightKg={Number(reportEntry.weight_kg)}
+        />
+      </div>
+    ) : (
+      <div className="py-12 text-center space-y-3">
+        <p className="text-muted-foreground">{t("report.notAvailable")}</p>
+        <p className="text-sm text-muted-foreground">{t("report.needMore")}</p>
+        <Button onClick={() => setShowNewForm(true)}>
+          <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
+        </Button>
+      </div>
+    );
+
+    const progressEl = (
+      <ProgressPage
+        entries={entries.map((e) => ({
+          recorded_at: e.recorded_at,
+          weight_kg: Number(e.weight_kg),
+          body_fat_pct: e.body_fat_pct != null ? Number(e.body_fat_pct) : null,
+          water_pct: e.water_pct != null ? Number(e.water_pct) : null,
+          muscle_pct: e.muscle_pct != null ? Number(e.muscle_pct) : null,
+          bone_pct: e.bone_pct != null ? Number(e.bone_pct) : null,
+        }))}
+        targetWeight={targetWeight}
+        idealBodyFat={progressIdealFat}
+        idealWater={progressIdealWater}
+        idealMuscle={progressIdealMuscle}
+        idealBone={progressIdealBone}
+      />
+    );
+
+    const historyEl = (
+      <HistoryList
+        entries={entries}
+        nutrition={[]}
+        onView={viewReport}
+        onDelete={deleteEntry}
+        onDeleteNutrition={() => {}}
+        only="body"
+        hideTitle
+      />
+    );
+
+    return (
+      <SectionShell title={t("cat.body")} onBack={goHub}>
+        <Tabs value={bodyTab} onValueChange={(v) => { setBodyTab(v as any); setShowNewForm(false); if (v !== "report") setReportEntryId(null); }}>
+          <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsTrigger value="home" className="text-[11px] py-2">{t("body.tab.home")}</TabsTrigger>
+            <TabsTrigger value="report" className="text-[11px] py-2">{t("body.tab.report")}</TabsTrigger>
+            <TabsTrigger value="progress" className="text-[11px] py-2">{t("body.tab.progress")}</TabsTrigger>
+            <TabsTrigger value="history" className="text-[11px] py-2">{t("body.tab.history")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="home" className="mt-4">{dashboardEl}</TabsContent>
+          <TabsContent value="report" className="mt-4">{reportEl}</TabsContent>
+          <TabsContent value="progress" className="mt-4">{progressEl}</TabsContent>
+          <TabsContent value="history" className="mt-4">{historyEl}</TabsContent>
+        </Tabs>
+      </SectionShell>
+    );
+  };
+
+  const renderNutrition = () => (
+    <SectionShell title={t("cat.nutrition")} onBack={goHub}>
+      <Tabs defaultValue="goals">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="goals" className="text-[11px] py-2">{t("nut.tab.goals")}</TabsTrigger>
+          <TabsTrigger value="tracker" className="text-[11px] py-2">{t("nut.tab.tracker")}</TabsTrigger>
+          <TabsTrigger value="history" className="text-[11px] py-2">{t("nut.tab.history")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="goals" className="mt-4">
+          <DietPage
+            latest={dietLatest}
+            bmr={dashboardBmr}
+            idealWeightKg={userProfile ? idealWeightKg(userProfile.height_cm) : null}
+            targetWeightKg={targetWeight}
+            displayName={profile?.display_name ?? user?.email ?? ""}
+            onSaved={() => loadAll()}
+          />
+        </TabsContent>
+        <TabsContent value="tracker" className="mt-4">
+          <Placeholder title={t("nut.tab.tracker")} />
+        </TabsContent>
+        <TabsContent value="history" className="mt-4">
+          <HistoryList
+            entries={[]}
+            nutrition={nutrition}
+            onView={() => {}}
+            onDelete={() => {}}
+            onDeleteNutrition={deleteNutrition}
+            only="diet"
+            hideTitle
+          />
+        </TabsContent>
+      </Tabs>
+    </SectionShell>
+  );
+
+  const renderExercise = () => (
+    <SectionShell title={t("cat.exercise")} onBack={goHub}>
+      <Tabs defaultValue="assessment">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="assessment" className="text-[11px] py-2">{t("ex.tab.assessment")}</TabsTrigger>
+          <TabsTrigger value="library" className="text-[11px] py-2">{t("ex.tab.library")}</TabsTrigger>
+          <TabsTrigger value="plan" className="text-[11px] py-2">{t("ex.tab.plan")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="assessment" className="mt-4"><Placeholder title={t("ex.tab.assessment")} /></TabsContent>
+        <TabsContent value="library" className="mt-4"><Placeholder title={t("ex.tab.library")} /></TabsContent>
+        <TabsContent value="plan" className="mt-4"><Placeholder title={t("ex.tab.plan")} /></TabsContent>
+      </Tabs>
+    </SectionShell>
+  );
+
+  const renderHomeCat = () => (
+    <SectionShell title={t("cat.home")} onBack={goHub}>
+      <Placeholder title={t("ph.soon")} />
+    </SectionShell>
+  );
+
+  const renderAssessment = () => (
+    <SectionShell title={t("cat.assessment")} onBack={goHub}>
+      <Placeholder title={t("cat.assessment")} desc={t("cat.assessment.desc")} />
+    </SectionShell>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Onboarding wizard (forced) */}
       {user && needsOnboarding && (
         <OnboardingDialog
           open={true}
@@ -215,7 +408,6 @@ const Index = () => {
         />
       )}
 
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-start">
           <SideMenu
@@ -230,109 +422,14 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto max-w-3xl px-4 py-5 pb-28">
-        {tab === "home" && (
-          <Dashboard
-            weight={latest ? Number(latest.weight_kg) : null}
-            targetWeight={targetWeight}
-            bodyFat={latest?.body_fat_pct != null ? Number(latest.body_fat_pct) : null}
-            water={latest?.water_pct != null ? Number(latest.water_pct) : null}
-            muscle={latest?.muscle_pct != null ? Number(latest.muscle_pct) : null}
-            bone={latest?.bone_pct != null ? Number(latest.bone_pct) : null}
-            bmr={dashboardBmr}
-            amr={dashboardAmr}
-            bmi={dashboardBmi}
-            progress={progress}
-            measuredAt={latest?.recorded_at ?? null}
-          />
-        )}
-
-        {tab === "report" && (
-          showNewForm ? (
-            <NewMeasurementForm
-              initial={{
-                sex: profile?.sex ?? "male",
-                age: profile?.age ?? null,
-                height_cm: profile?.height_cm ?? null,
-                activity_level: profile?.activity_level ?? "moderate",
-              }}
-              onSave={handleSaveMeasurement}
-            />
-          ) : reportEntry && userProfile ? (
-            <div className="space-y-3">
-              <div className="flex justify-end">
-                <Button size="sm" onClick={() => setShowNewForm(true)}>
-                  <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
-                </Button>
-              </div>
-              <ReportView
-                profile={userProfile}
-                report={(() => {
-                  const r = buildReport(userProfile, reportEntry as Measurement);
-                  if (reportEntry.bmr_kcal != null) r.bmr.current = Math.round(Number(reportEntry.bmr_kcal));
-                  if (reportEntry.amr_kcal != null) r.amr.current = Math.round(Number(reportEntry.amr_kcal));
-                  return r;
-                })()}
-                dateLabel={format(new Date(reportEntry.recorded_at), "yyyy-MM-dd")}
-                displayName={profile?.display_name ?? user?.email ?? ""}
-                weightKg={Number(reportEntry.weight_kg)}
-              />
-            </div>
-          ) : (
-            <div className="py-12 text-center space-y-3">
-              <p className="text-muted-foreground">{t("report.notAvailable")}</p>
-              <p className="text-sm text-muted-foreground">{t("report.needMore")}</p>
-              <Button onClick={() => setShowNewForm(true)}>
-                <Plus className="w-4 h-4 mr-1" /> {t("report.add")}
-              </Button>
-            </div>
-          )
-        )}
-
-        {tab === "progress" && (
-          <ProgressPage
-            entries={entries.map((e) => ({
-              recorded_at: e.recorded_at,
-              weight_kg: Number(e.weight_kg),
-              body_fat_pct: e.body_fat_pct != null ? Number(e.body_fat_pct) : null,
-              water_pct: e.water_pct != null ? Number(e.water_pct) : null,
-              muscle_pct: e.muscle_pct != null ? Number(e.muscle_pct) : null,
-              bone_pct: e.bone_pct != null ? Number(e.bone_pct) : null,
-            }))}
-            targetWeight={targetWeight}
-            idealBodyFat={progressIdealFat}
-            idealWater={progressIdealWater}
-            idealMuscle={progressIdealMuscle}
-            idealBone={progressIdealBone}
-          />
-        )}
-
-        {tab === "diet" && (
-          <DietPage
-            latest={dietLatest}
-            bmr={dashboardBmr}
-            idealWeightKg={userProfile ? idealWeightKg(userProfile.height_cm) : null}
-            targetWeightKg={targetWeight}
-            displayName={profile?.display_name ?? user?.email ?? ""}
-            onSaved={() => loadAll()}
-          />
-        )}
-
-        {tab === "history" && (
-          <HistoryList
-            entries={entries}
-            nutrition={nutrition}
-            onView={viewReport}
-            onDelete={deleteEntry}
-            onDeleteNutrition={deleteNutrition}
-          />
-        )}
+        {category === null && <CategoryHub onSelect={setCategory} />}
+        {category === "home" && renderHomeCat()}
+        {category === "body" && renderBody()}
+        {category === "nutrition" && renderNutrition()}
+        {category === "exercise" && renderExercise()}
+        {category === "assessment" && renderAssessment()}
       </main>
 
-      <BottomNav active={tab} onChange={(newTab) => {
-        setTab(newTab);
-        setShowNewForm(false);
-        if (newTab !== "report") setReportEntryId(null);
-      }} />
       <CoachChat context={aiContext} />
     </div>
   );
