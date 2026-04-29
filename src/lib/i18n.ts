@@ -141,6 +141,34 @@ const EL: Dict = {
   "export.word": "Word",
   "export.pdfOk": "PDF δημιουργήθηκε!",
   "export.wordOk": "Word δημιουργήθηκε!",
+  // Hub categories
+  "hub.title": "Επίλεξε Κατηγορία",
+  "cat.home": "Αρχική Οθόνη",
+  "cat.body": "Σωματική Σύσταση",
+  "cat.nutrition": "Διατροφή",
+  "cat.exercise": "Άσκηση",
+  "cat.assessment": "Αξιολόγηση",
+  "cat.home.desc": "Σύντομα διαθέσιμη",
+  "cat.body.desc": "Μετρήσεις, αναφορά, πρόοδος",
+  "cat.nutrition.desc": "Στόχοι, γεύματα, ιστορικό",
+  "cat.exercise.desc": "Smart Trainer & ασκήσεις",
+  "cat.assessment.desc": "Τελική ανάλυση & συμπεράσματα",
+  // Body sub-tabs
+  "body.tab.home": "Αρχική Σώματος",
+  "body.tab.report": "Αναφορά",
+  "body.tab.progress": "Πρόοδος",
+  "body.tab.history": "Ιστορικό Μετρήσεων",
+  // Nutrition sub-tabs
+  "nut.tab.goals": "Διατροφικοί Στόχοι",
+  "nut.tab.tracker": "Ημερολόγιο Γευμάτων",
+  "nut.tab.history": "Ιστορικό Διατροφής",
+  // Exercise sub-tabs
+  "ex.tab.assessment": "Αξιολόγηση",
+  "ex.tab.library": "Βιβλιοθήκη",
+  "ex.tab.plan": "Πλάνο",
+  // Placeholders
+  "ph.soon": "Σύντομα διαθέσιμη",
+  "ph.desc": "Η ενότητα χτίζεται. Σε επόμενη ενημέρωση.",
 };
 
 const EN: Dict = {
