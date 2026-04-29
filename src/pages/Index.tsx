@@ -20,6 +20,7 @@ import { DietPage } from "@/components/DietPage";
 import { CategoryHub, Category } from "@/components/CategoryHub";
 import { SectionShell } from "@/components/SectionShell";
 import { AssessmentForm } from "@/components/AssessmentForm";
+import { ExerciseLibrary } from "@/components/ExerciseLibrary";
 import {
   ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement,
   buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi,
@@ -380,7 +381,7 @@ const Index = () => {
           <TabsTrigger value="plan" className="text-[11px] py-2">{t("ex.tab.plan")}</TabsTrigger>
         </TabsList>
         <TabsContent value="assessment" className="mt-4"><AssessmentForm /></TabsContent>
-        <TabsContent value="library" className="mt-4"><Placeholder title={t("ex.tab.library")} /></TabsContent>
+        <TabsContent value="library" className="mt-4"><ExerciseLibrary /></TabsContent>
         <TabsContent value="plan" className="mt-4"><Placeholder title={t("ex.tab.plan")} /></TabsContent>
       </Tabs>
     </SectionShell>
