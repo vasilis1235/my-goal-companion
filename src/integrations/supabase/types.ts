@@ -143,6 +143,48 @@ export type Database = {
         }
         Relationships: []
       }
+      training_profile: {
+        Row: {
+          created_at: string
+          equipment: string[]
+          experience: string
+          goal: string
+          id: string
+          injuries: string[]
+          injury_notes: string | null
+          location: string
+          minutes_per_week: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment?: string[]
+          experience?: string
+          goal?: string
+          id?: string
+          injuries?: string[]
+          injury_notes?: string | null
+          location?: string
+          minutes_per_week?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment?: string[]
+          experience?: string
+          goal?: string
+          id?: string
+          injuries?: string[]
+          injury_notes?: string | null
+          location?: string
+          minutes_per_week?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_entries: {
         Row: {
           amr_kcal: number | null
