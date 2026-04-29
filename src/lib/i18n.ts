@@ -334,6 +334,21 @@ const EN: Dict = {
   "ex.tab.plan": "Plan",
   "ph.soon": "Coming soon",
   "ph.desc": "This section is being built. Check back later.",
+  "ex.lib.search": "Search exercise...",
+  "ex.lib.allEquip": "All equipment",
+  "ex.lib.smart": "Smart filter",
+  "ex.lib.results": "results",
+  "ex.lib.empty": "No exercises match the current filters.",
+  "ex.lib.loading": "Loading exercises from wger...",
+  "ex.lib.error": "Failed to load",
+  "ex.lib.noProfile": "Fill the Assessment to personalize",
+  "ex.eq.bodyweight": "Bodyweight",
+  "ex.eq.dumbbells": "Dumbbells",
+  "ex.eq.barbell": "Barbell",
+  "ex.eq.bands": "Bands",
+  "ex.eq.kettlebells": "Kettlebells",
+  "ex.eq.machines": "Machines",
+  "ex.eq.pullup_bar": "Pull-up bar",
 };
 
 // German, French, Italian: start from EN and override translated keys
