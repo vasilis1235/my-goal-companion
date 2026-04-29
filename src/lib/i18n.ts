@@ -169,6 +169,22 @@ const EL: Dict = {
   // Placeholders
   "ph.soon": "Σύντομα διαθέσιμη",
   "ph.desc": "Η ενότητα χτίζεται. Σε επόμενη ενημέρωση.",
+  // Exercise library
+  "ex.lib.search": "Αναζήτηση άσκησης...",
+  "ex.lib.allEquip": "Όλος ο εξοπλισμός",
+  "ex.lib.smart": "Έξυπνο φιλτράρισμα",
+  "ex.lib.results": "αποτελέσματα",
+  "ex.lib.empty": "Δεν βρέθηκαν ασκήσεις με τα τρέχοντα φίλτρα.",
+  "ex.lib.loading": "Φόρτωση ασκήσεων από wger...",
+  "ex.lib.error": "Σφάλμα φόρτωσης",
+  "ex.lib.noProfile": "Συμπλήρωσε την Αξιολόγηση για εξατομίκευση",
+  "ex.eq.bodyweight": "Χωρίς εξοπλισμό",
+  "ex.eq.dumbbells": "Αλτήρες",
+  "ex.eq.barbell": "Μπάρα",
+  "ex.eq.bands": "Λάστιχα",
+  "ex.eq.kettlebells": "Kettlebells",
+  "ex.eq.machines": "Μηχανήματα",
+  "ex.eq.pullup_bar": "Μονόζυγο",
 };
 
 const EN: Dict = {
