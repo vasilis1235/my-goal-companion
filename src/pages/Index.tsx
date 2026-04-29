@@ -20,6 +20,7 @@ import { DietPage } from "@/components/DietPage";
 import { CategoryHub, Category } from "@/components/CategoryHub";
 import { SectionShell } from "@/components/SectionShell";
 import { AssessmentForm } from "@/components/AssessmentForm";
+import { ExerciseLibrary } from "@/components/ExerciseLibrary";
 import {
   ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement,
   buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi,
