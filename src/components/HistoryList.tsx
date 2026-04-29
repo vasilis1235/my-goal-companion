@@ -29,9 +29,13 @@ interface Props {
   onView: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteNutrition: (id: string) => void;
+  /** "both" (default) shows tabs, "body" or "diet" shows only that section */
+  only?: "both" | "body" | "diet";
+  /** hide the outer h2 title (when used inside a SectionShell) */
+  hideTitle?: boolean;
 }
 
-export const HistoryList = ({ entries, nutrition, onView, onDelete, onDeleteNutrition }: Props) => {
+export const HistoryList = ({ entries, nutrition, onView, onDelete, onDeleteNutrition, only = "both", hideTitle = false }: Props) => {
   const { t, units } = useAppPrefs();
 
   return (
