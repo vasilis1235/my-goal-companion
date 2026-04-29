@@ -379,7 +379,7 @@ const Index = () => {
           <TabsTrigger value="library" className="text-[11px] py-2">{t("ex.tab.library")}</TabsTrigger>
           <TabsTrigger value="plan" className="text-[11px] py-2">{t("ex.tab.plan")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="assessment" className="mt-4"><Placeholder title={t("ex.tab.assessment")} /></TabsContent>
+        <TabsContent value="assessment" className="mt-4"><AssessmentForm /></TabsContent>
         <TabsContent value="library" className="mt-4"><Placeholder title={t("ex.tab.library")} /></TabsContent>
         <TabsContent value="plan" className="mt-4"><Placeholder title={t("ex.tab.plan")} /></TabsContent>
       </Tabs>
