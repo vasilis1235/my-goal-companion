@@ -21,6 +21,7 @@ import { CategoryHub, Category } from "@/components/CategoryHub";
 import { SectionShell } from "@/components/SectionShell";
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { ExerciseLibrary } from "@/components/ExerciseLibrary";
+import { FoodTracker } from "@/components/FoodTracker";
 import {
   ACTIVITY_LABELS, ActivityLevel, Sex, UserProfile, Measurement,
   buildReport, bmr as calcBmr, amr as calcAmr, idealWeightKg, bmi as calcBmi,
@@ -355,7 +356,7 @@ const Index = () => {
           />
         </TabsContent>
         <TabsContent value="tracker" className="mt-4">
-          <Placeholder title={t("nut.tab.tracker")} />
+          <FoodTracker bmr={dashboardBmr} amr={dashboardAmr} onSaved={() => loadAll()} />
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <HistoryList
