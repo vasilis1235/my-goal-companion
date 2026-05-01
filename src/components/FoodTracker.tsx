@@ -407,19 +407,19 @@ export function FoodTracker({ amr, onSaved }: Props) {
               label={t("ft.protein")}
               value={totals.protein_g}
               target={targets.protein_g}
-              color="bg-chart-1"
+              color="bg-primary"
             />
             <MacroBar
               label={t("ft.carbs")}
               value={totals.carbs_g}
               target={targets.carbs_g}
-              color="bg-chart-2"
+              color="bg-success"
             />
             <MacroBar
               label={t("ft.fat")}
               value={totals.fat_g}
               target={targets.fat_g}
-              color="bg-chart-3"
+              color="bg-warning"
             />
           </div>
 
