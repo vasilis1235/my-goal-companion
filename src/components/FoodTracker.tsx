@@ -386,6 +386,50 @@ export function FoodTracker({ amr, onSaved }: Props) {
     onSaved?.();
   };
 
+  // Open targets dialog with current values pre-filled (manual overrides only; placeholders show auto)
+  const openTargets = () => {
+    const f: Record<string, string> = {};
+    if (manualTargets) {
+      Object.keys(manualTargets).forEach((k) => {
+        const v = (manualTargets as any)[k];
+        if (typeof v === "number") f[k] = String(v);
+      });
+    }
+    setTargetsForm(f);
+    setTargetsOpen(true);
+  };
+
+  const saveTargets = async () => {
+    if (!user) return;
+    const payload: any = { user_id: user.id };
+    const keys = ["kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "water_ml",
+      "saturated_fat_g", "sugars_g", "cholesterol_mg",
+      "sodium_mg", "potassium_mg", "calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_a_iu"];
+    keys.forEach((k) => {
+      const raw = targetsForm[k];
+      const n = raw == null || raw === "" ? null : parseFloat(raw);
+      payload[k] = n != null && Number.isFinite(n) && n > 0 ? n : null;
+    });
+    const { data, error } = await supabase
+      .from("nutrition_targets")
+      .upsert(payload, { onConflict: "user_id" })
+      .select()
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setManualTargets(data);
+    setTargetsOpen(false);
+    toast.success(t("ft.targets.saved"));
+  };
+
+  const resetTargets = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("nutrition_targets").delete().eq("user_id", user.id);
+    if (error) { toast.error(error.message); return; }
+    setManualTargets(null);
+    setTargetsForm({});
+    toast.success(t("ft.targets.cleared"));
+  };
+
   // Group by meal type
   const grouped = useMemo(() => {
     const g: Record<MealType, LogItem[]> = {
