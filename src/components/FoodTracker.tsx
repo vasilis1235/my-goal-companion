@@ -17,12 +17,15 @@ import {
   Moon,
   Cookie,
   Info,
+  Settings as SettingsIcon,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppPrefs } from "@/contexts/AppPreferences";
-import { defaultTargetsFromAMR, mergeTargets, MealType, MEAL_TYPES } from "@/lib/macroTargets";
+import { defaultTargetsFromAMR, mergeTargets, MealType, MEAL_TYPES, resolveTarget } from "@/lib/macroTargets";
+import { NUTRIENT_META, NUTRIENT_INFO, NutrientKey, MACRO_KEYS, MICRO_KEYS } from "@/lib/nutrientInfo";
 
 interface FoodResult {
   source: "off" | "usda";
