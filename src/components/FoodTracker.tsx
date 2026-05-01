@@ -444,56 +444,65 @@ export function FoodTracker({ amr, onSaved }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Day summary with macro rings */}
+      {/* Day summary — Cronometer-style: clickable nutrients */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">{t("ft.today")}</CardTitle>
+          <Button size="sm" variant="ghost" onClick={openTargets} className="h-8">
+            <SettingsIcon className="w-4 h-4 mr-1" />
+            {t("ft.targetSetup")}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Calories */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">{t("ft.calories")}</span>
-              <span className="text-muted-foreground">
-                {Math.round(totals.kcal)} / {targets.kcal} kcal
-              </span>
-            </div>
-            <Progress value={pct(totals.kcal, targets.kcal)} className="h-2" />
-          </div>
+          {/* Calories — clickable */}
+          <NutrientRow
+            nKey="kcal"
+            label={t("ft.calories")}
+            value={totalFor("kcal")}
+            target={targetFor("kcal")}
+            manual={isManual("kcal")}
+            onClick={() => setInfoKey("kcal")}
+            big
+          />
 
           {/* Macros */}
-          <div className="grid grid-cols-3 gap-3">
-            <MacroBar
-              label={t("ft.protein")}
-              value={totals.protein_g}
-              target={targets.protein_g}
-              color="bg-primary"
-            />
-            <MacroBar
-              label={t("ft.carbs")}
-              value={totals.carbs_g}
-              target={targets.carbs_g}
-              color="bg-success"
-            />
-            <MacroBar
-              label={t("ft.fat")}
-              value={totals.fat_g}
-              target={targets.fat_g}
-              color="bg-warning"
-            />
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("ft.macros")}
+            </div>
+            {MACRO_KEYS.map((k) => (
+              <NutrientRow
+                key={k}
+                nKey={k}
+                label={t(`n.${k}`) !== `n.${k}` ? t(`n.${k}`) : nutrientLabelFallback(k, t)}
+                value={totalFor(k)}
+                target={targetFor(k)}
+                manual={isManual(k)}
+                onClick={() => setInfoKey(k)}
+              />
+            ))}
           </div>
 
-          {totals.fiber_g > 0 || targets.fiber_g > 0 ? (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span>{t("ft.fiber")}</span>
-                <span className="text-muted-foreground">
-                  {Math.round(totals.fiber_g)} / {targets.fiber_g} g
-                </span>
-              </div>
-              <Progress value={pct(totals.fiber_g, targets.fiber_g)} className="h-1.5" />
+          {/* Micros */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("ft.micros")}
             </div>
-          ) : null}
+            {MICRO_KEYS.map((k) => (
+              <NutrientRow
+                key={k}
+                nKey={k}
+                label={t(`n.${k}`)}
+                value={totalFor(k)}
+                target={targetFor(k)}
+                manual={isManual(k)}
+                onClick={() => setInfoKey(k)}
+              />
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground pt-1">
+            {t("ft.tapForInfo")}
+          </p>
         </CardContent>
       </Card>
 
