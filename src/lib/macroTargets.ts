@@ -47,3 +47,22 @@ export function mergeTargets(amr: number | null, manual: ManualTargets | null): 
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+// Resolve target for any nutrient: manual override (if any & >0) → AMR-based macro split → FDA DV default.
+import { NUTRIENT_META, NutrientKey } from "./nutrientInfo";
+
+export function resolveTarget(
+  key: NutrientKey,
+  amr: number | null,
+  manual: ManualTargets | null
+): number {
+  // Manual override
+  const m = manual as any;
+  if (m && m[key] != null && Number(m[key]) > 0) return Number(m[key]);
+  // AMR-driven macros
+  if (key === "kcal" || key === "protein_g" || key === "carbs_g" || key === "fat_g" || key === "fiber_g") {
+    const def = defaultTargetsFromAMR(amr);
+    return (def as any)[key] ?? NUTRIENT_META[key].defaultTarget;
+  }
+  return NUTRIENT_META[key].defaultTarget;
+}

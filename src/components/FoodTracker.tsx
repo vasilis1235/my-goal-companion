@@ -17,12 +17,15 @@ import {
   Moon,
   Cookie,
   Info,
+  Settings as SettingsIcon,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppPrefs } from "@/contexts/AppPreferences";
-import { defaultTargetsFromAMR, mergeTargets, MealType, MEAL_TYPES } from "@/lib/macroTargets";
+import { defaultTargetsFromAMR, mergeTargets, MealType, MEAL_TYPES, resolveTarget } from "@/lib/macroTargets";
+import { NUTRIENT_META, NUTRIENT_INFO, NutrientKey, MACRO_KEYS, MICRO_KEYS } from "@/lib/nutrientInfo";
 
 interface FoodResult {
   source: "off" | "usda";
@@ -127,7 +130,20 @@ export function FoodTracker({ amr, onSaved }: Props) {
   // Detail
   const [detail, setDetail] = useState<LogItem | null>(null);
 
+  // Nutrient info dialog (Cronometer-style)
+  const [infoKey, setInfoKey] = useState<NutrientKey | null>(null);
+
+  // Targets manual-override dialog
+  const [targetsOpen, setTargetsOpen] = useState(false);
+  const [targetsForm, setTargetsForm] = useState<Record<string, string>>({});
+
   const targets = useMemo(() => mergeTargets(amr, manualTargets), [amr, manualTargets]);
+
+  const targetFor = (k: NutrientKey) => resolveTarget(k, amr, manualTargets);
+  const totalFor = (k: NutrientKey) =>
+    items.reduce((s, i) => s + (Number((i as any)[NUTRIENT_META[k].field]) || 0), 0);
+  const isManual = (k: NutrientKey) =>
+    manualTargets && (manualTargets as any)[k] != null && Number((manualTargets as any)[k]) > 0;
 
   // Load today's items + targets
   const loadDay = async () => {
@@ -370,6 +386,50 @@ export function FoodTracker({ amr, onSaved }: Props) {
     onSaved?.();
   };
 
+  // Open targets dialog with current values pre-filled (manual overrides only; placeholders show auto)
+  const openTargets = () => {
+    const f: Record<string, string> = {};
+    if (manualTargets) {
+      Object.keys(manualTargets).forEach((k) => {
+        const v = (manualTargets as any)[k];
+        if (typeof v === "number") f[k] = String(v);
+      });
+    }
+    setTargetsForm(f);
+    setTargetsOpen(true);
+  };
+
+  const saveTargets = async () => {
+    if (!user) return;
+    const payload: any = { user_id: user.id };
+    const keys = ["kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "water_ml",
+      "saturated_fat_g", "sugars_g", "cholesterol_mg",
+      "sodium_mg", "potassium_mg", "calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_a_iu"];
+    keys.forEach((k) => {
+      const raw = targetsForm[k];
+      const n = raw == null || raw === "" ? null : parseFloat(raw);
+      payload[k] = n != null && Number.isFinite(n) && n > 0 ? n : null;
+    });
+    const { data, error } = await supabase
+      .from("nutrition_targets")
+      .upsert(payload, { onConflict: "user_id" })
+      .select()
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setManualTargets(data);
+    setTargetsOpen(false);
+    toast.success(t("ft.targets.saved"));
+  };
+
+  const resetTargets = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("nutrition_targets").delete().eq("user_id", user.id);
+    if (error) { toast.error(error.message); return; }
+    setManualTargets(null);
+    setTargetsForm({});
+    toast.success(t("ft.targets.cleared"));
+  };
+
   // Group by meal type
   const grouped = useMemo(() => {
     const g: Record<MealType, LogItem[]> = {
@@ -384,56 +444,65 @@ export function FoodTracker({ amr, onSaved }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Day summary with macro rings */}
+      {/* Day summary — Cronometer-style: clickable nutrients */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">{t("ft.today")}</CardTitle>
+          <Button size="sm" variant="ghost" onClick={openTargets} className="h-8">
+            <SettingsIcon className="w-4 h-4 mr-1" />
+            {t("ft.targetSetup")}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Calories */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium">{t("ft.calories")}</span>
-              <span className="text-muted-foreground">
-                {Math.round(totals.kcal)} / {targets.kcal} kcal
-              </span>
-            </div>
-            <Progress value={pct(totals.kcal, targets.kcal)} className="h-2" />
-          </div>
+          {/* Calories — clickable */}
+          <NutrientRow
+            nKey="kcal"
+            label={t("ft.calories")}
+            value={totalFor("kcal")}
+            target={targetFor("kcal")}
+            manual={isManual("kcal")}
+            onClick={() => setInfoKey("kcal")}
+            big
+          />
 
           {/* Macros */}
-          <div className="grid grid-cols-3 gap-3">
-            <MacroBar
-              label={t("ft.protein")}
-              value={totals.protein_g}
-              target={targets.protein_g}
-              color="bg-primary"
-            />
-            <MacroBar
-              label={t("ft.carbs")}
-              value={totals.carbs_g}
-              target={targets.carbs_g}
-              color="bg-success"
-            />
-            <MacroBar
-              label={t("ft.fat")}
-              value={totals.fat_g}
-              target={targets.fat_g}
-              color="bg-warning"
-            />
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("ft.macros")}
+            </div>
+            {MACRO_KEYS.map((k) => (
+              <NutrientRow
+                key={k}
+                nKey={k}
+                label={t(`n.${k}`) !== `n.${k}` ? t(`n.${k}`) : nutrientLabelFallback(k, t)}
+                value={totalFor(k)}
+                target={targetFor(k)}
+                manual={isManual(k)}
+                onClick={() => setInfoKey(k)}
+              />
+            ))}
           </div>
 
-          {totals.fiber_g > 0 || targets.fiber_g > 0 ? (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span>{t("ft.fiber")}</span>
-                <span className="text-muted-foreground">
-                  {Math.round(totals.fiber_g)} / {targets.fiber_g} g
-                </span>
-              </div>
-              <Progress value={pct(totals.fiber_g, targets.fiber_g)} className="h-1.5" />
+          {/* Micros */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("ft.micros")}
             </div>
-          ) : null}
+            {MICRO_KEYS.map((k) => (
+              <NutrientRow
+                key={k}
+                nKey={k}
+                label={t(`n.${k}`)}
+                value={totalFor(k)}
+                target={targetFor(k)}
+                manual={isManual(k)}
+                onClick={() => setInfoKey(k)}
+              />
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground pt-1">
+            {t("ft.tapForInfo")}
+          </p>
         </CardContent>
       </Card>
 
@@ -725,27 +794,214 @@ export function FoodTracker({ amr, onSaved }: Props) {
                 {detail.grams ? `${Math.round(detail.grams)}γρ` : ""}
               </div>
               <Section title={t("ft.macros")}>
-                <Row label={t("ft.calories")} value={`${Math.round(detail.kcal)} kcal`} />
-                <Row label={t("ft.protein")} value={fmtG(detail.protein_g)} />
-                <Row label={t("ft.carbs")} value={fmtG(detail.carbs_g)} />
-                <Row label={t("ft.fat")} value={fmtG(detail.fat_g)} />
-                <Row label="• Κορεσμένα" value={fmtG(detail.saturated_fat_g)} />
-                <Row label="• Ζάχαρα" value={fmtG(detail.sugars_g)} />
-                <Row label={t("ft.fiber")} value={fmtG(detail.fiber_g)} />
+                <ClickRow onClick={() => setInfoKey("kcal")} label={t("ft.calories")} value={`${Math.round(detail.kcal)} kcal`} />
+                <ClickRow onClick={() => setInfoKey("protein_g")} label={t("ft.protein")} value={fmtG(detail.protein_g)} />
+                <ClickRow onClick={() => setInfoKey("carbs_g")} label={t("ft.carbs")} value={fmtG(detail.carbs_g)} />
+                <ClickRow onClick={() => setInfoKey("fat_g")} label={t("ft.fat")} value={fmtG(detail.fat_g)} />
+                <ClickRow onClick={() => setInfoKey("saturated_fat_g")} label={`• ${t("n.saturated_fat_g")}`} value={fmtG(detail.saturated_fat_g)} />
+                <ClickRow onClick={() => setInfoKey("sugars_g")} label={`• ${t("n.sugars_g")}`} value={fmtG(detail.sugars_g)} />
+                <ClickRow onClick={() => setInfoKey("fiber_g")} label={t("ft.fiber")} value={fmtG(detail.fiber_g)} />
+                <ClickRow onClick={() => setInfoKey("cholesterol_mg")} label={t("n.cholesterol_mg")} value={fmtMg(detail.cholesterol_mg)} />
               </Section>
               <Section title={t("ft.micros")}>
-                <Row label="Νάτριο" value={fmtMg(detail.sodium_mg)} />
-                <Row label="Κάλιο" value={fmtMg(detail.potassium_mg)} />
-                <Row label="Ασβέστιο" value={fmtMg(detail.calcium_mg)} />
-                <Row label="Σίδηρος" value={fmtMg(detail.iron_mg)} />
-                <Row label="Βιταμίνη C" value={fmtMg(detail.vitamin_c_mg)} />
-                <Row label="Βιταμίνη A" value={detail.vitamin_a_iu != null ? `${Math.round(detail.vitamin_a_iu)} IU` : "—"} />
-                <Row label="Χοληστερόλη" value={fmtMg(detail.cholesterol_mg)} />
+                <ClickRow onClick={() => setInfoKey("sodium_mg")} label={t("n.sodium_mg")} value={fmtMg(detail.sodium_mg)} />
+                <ClickRow onClick={() => setInfoKey("potassium_mg")} label={t("n.potassium_mg")} value={fmtMg(detail.potassium_mg)} />
+                <ClickRow onClick={() => setInfoKey("calcium_mg")} label={t("n.calcium_mg")} value={fmtMg(detail.calcium_mg)} />
+                <ClickRow onClick={() => setInfoKey("iron_mg")} label={t("n.iron_mg")} value={fmtMg(detail.iron_mg)} />
+                <ClickRow onClick={() => setInfoKey("vitamin_c_mg")} label={t("n.vitamin_c_mg")} value={fmtMg(detail.vitamin_c_mg)} />
+                <ClickRow onClick={() => setInfoKey("vitamin_a_iu")} label={t("n.vitamin_a_iu")} value={detail.vitamin_a_iu != null ? `${Math.round(detail.vitamin_a_iu)} IU` : "—"} />
               </Section>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Nutrient info dialog (Cronometer-style) */}
+      <Dialog open={!!infoKey} onOpenChange={(o) => !o && setInfoKey(null)}>
+        <DialogContent className="max-w-md">
+          {infoKey && (() => {
+            const meta = NUTRIENT_META[infoKey];
+            const info = NUTRIENT_INFO[infoKey];
+            const consumed = totalFor(infoKey);
+            const target = targetFor(infoKey);
+            const remaining = Math.max(0, target - consumed);
+            const over = consumed > target;
+            const pct = target > 0 ? Math.min(100, (consumed / target) * 100) : 0;
+            const isLimit = meta.kind === "limit";
+            const lang = (t("app.name") === "Fitness Tracker" ? "en" : "el") as "el" | "en";
+            const txt = info[lang];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-left">{txt.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{txt.desc}</p>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span>{t("ft.consumed")}</span>
+                      <span className="font-medium">
+                        {Math.round(consumed * 10) / 10} {meta.unit}
+                      </span>
+                    </div>
+                    <Progress value={pct} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>
+                        {t("ft.dailyValue")}: {target} {meta.unit}{" "}
+                        ({isLimit ? t("ft.target.limit") : t("ft.target.goal")})
+                        {isManual(infoKey) ? "" : ` • ${t("ft.auto")}`}
+                      </span>
+                      <span>
+                        {over
+                          ? `+${Math.round((consumed - target) * 10) / 10} ${meta.unit} ${t("ft.over")}`
+                          : `${Math.round(remaining * 10) / 10} ${meta.unit} ${t("ft.remaining")}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setInfoKey(null)}>
+                    {t("common.cancel") || "Close"}
+                  </Button>
+                  <Button onClick={() => { setInfoKey(null); openTargets(); }}>
+                    <SettingsIcon className="w-4 h-4 mr-1" />
+                    {t("ft.targetSetup")}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Targets manual override dialog */}
+      <Dialog open={targetsOpen} onOpenChange={setTargetsOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-left">{t("ft.targets.title")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">{t("ft.targets.desc")}</p>
+          <div className="space-y-3">
+            <TargetGroup title={t("ft.macros")} nKeys={["kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "saturated_fat_g", "sugars_g", "cholesterol_mg"]}
+              t={t} amr={amr} form={targetsForm} setForm={setTargetsForm} />
+            <TargetGroup title={t("ft.micros")} nKeys={["sodium_mg", "potassium_mg", "calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_a_iu"]}
+              t={t} amr={amr} form={targetsForm} setForm={setTargetsForm} />
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
+            <Button variant="ghost" onClick={resetTargets} className="text-muted-foreground">
+              <RotateCcw className="w-4 h-4 mr-1" />
+              {t("ft.targets.reset")}
+            </Button>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setTargetsOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={saveTargets}>{t("common.save")}</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Cronometer-style nutrient row used in Today summary
+function NutrientRow({
+  nKey, label, value, target, manual, onClick, big = false,
+}: {
+  nKey: NutrientKey;
+  label: string;
+  value: number;
+  target: number;
+  manual: boolean;
+  onClick: () => void;
+  big?: boolean;
+}) {
+  const meta = NUTRIENT_META[nKey];
+  const isLimit = meta.kind === "limit";
+  const ratio = target > 0 ? value / target : 0;
+  const pct = Math.min(100, ratio * 100);
+  const over = ratio > 1;
+  // For limits we want red when over; for goals we want green-ish when met.
+  const barColor = over
+    ? (isLimit ? "bg-destructive" : "bg-warning")
+    : (isLimit ? "bg-warning" : "bg-primary");
+  const v = Math.round(value * 10) / 10;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-md hover:bg-muted/50 transition-colors px-1 py-1 -mx-1"
+    >
+      <div className={`flex justify-between ${big ? "text-sm" : "text-xs"}`}>
+        <span className={big ? "font-semibold" : "font-medium"}>{label}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {v} / {target} {meta.unit}
+          {manual ? "" : <span className="opacity-60"> · auto</span>}
+        </span>
+      </div>
+      <div className={`mt-1 ${big ? "h-2" : "h-1.5"} rounded-full bg-muted overflow-hidden`}>
+        <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+    </button>
+  );
+}
+
+function nutrientLabelFallback(k: NutrientKey, t: (s: string) => string) {
+  if (k === "protein_g") return t("ft.protein");
+  if (k === "carbs_g") return t("ft.carbs");
+  if (k === "fat_g") return t("ft.fat");
+  if (k === "fiber_g") return t("ft.fiber");
+  return k;
+}
+
+function ClickRow({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex justify-between text-sm border-b border-border/50 py-1 last:border-0 hover:bg-muted/40 px-1 -mx-1 rounded transition-colors"
+    >
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{value}</span>
+    </button>
+  );
+}
+
+function TargetGroup({
+  title, nKeys, t, amr, form, setForm,
+}: {
+  title: string;
+  nKeys: NutrientKey[];
+  t: (s: string) => string;
+  amr: number | null;
+  form: Record<string, string>;
+  setForm: (f: Record<string, string>) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="grid grid-cols-2 gap-2">
+        {nKeys.map((k) => {
+          const meta = NUTRIENT_META[k];
+          const auto = resolveTarget(k, amr, null);
+          const labelKey = `n.${k}`;
+          const lab = t(labelKey) !== labelKey ? t(labelKey) : nutrientLabelFallback(k, t);
+          return (
+            <div key={k} className="space-y-1">
+              <Label className="text-xs">{lab} ({meta.unit})</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={`${t("ft.auto")}: ${auto}`}
+                value={form[k] ?? ""}
+                onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

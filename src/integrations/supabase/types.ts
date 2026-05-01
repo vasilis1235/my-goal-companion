@@ -190,39 +190,66 @@ export type Database = {
       }
       nutrition_targets: {
         Row: {
+          calcium_mg: number | null
           carbs_g: number | null
+          cholesterol_mg: number | null
           created_at: string
           fat_g: number | null
           fiber_g: number | null
           id: string
+          iron_mg: number | null
           kcal: number | null
+          potassium_mg: number | null
           protein_g: number | null
+          saturated_fat_g: number | null
+          sodium_mg: number | null
+          sugars_g: number | null
           updated_at: string
           user_id: string
+          vitamin_a_iu: number | null
+          vitamin_c_mg: number | null
           water_ml: number | null
         }
         Insert: {
+          calcium_mg?: number | null
           carbs_g?: number | null
+          cholesterol_mg?: number | null
           created_at?: string
           fat_g?: number | null
           fiber_g?: number | null
           id?: string
+          iron_mg?: number | null
           kcal?: number | null
+          potassium_mg?: number | null
           protein_g?: number | null
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          sugars_g?: number | null
           updated_at?: string
           user_id: string
+          vitamin_a_iu?: number | null
+          vitamin_c_mg?: number | null
           water_ml?: number | null
         }
         Update: {
+          calcium_mg?: number | null
           carbs_g?: number | null
+          cholesterol_mg?: number | null
           created_at?: string
           fat_g?: number | null
           fiber_g?: number | null
           id?: string
+          iron_mg?: number | null
           kcal?: number | null
+          potassium_mg?: number | null
           protein_g?: number | null
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          sugars_g?: number | null
           updated_at?: string
           user_id?: string
+          vitamin_a_iu?: number | null
+          vitamin_c_mg?: number | null
           water_ml?: number | null
         }
         Relationships: []
