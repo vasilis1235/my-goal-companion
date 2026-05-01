@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      food_log_items: {
+        Row: {
+          brand: string | null
+          calcium_mg: number | null
+          carbs_g: number | null
+          cholesterol_mg: number | null
+          created_at: string
+          external_id: string | null
+          fat_g: number | null
+          fiber_g: number | null
+          grams: number
+          id: string
+          iron_mg: number | null
+          kcal: number
+          logged_at: string
+          logged_date: string
+          meal_type: string
+          name: string
+          note: string | null
+          potassium_mg: number | null
+          protein_g: number | null
+          saturated_fat_g: number | null
+          sodium_mg: number | null
+          source: string | null
+          sugars_g: number | null
+          updated_at: string
+          user_id: string
+          vitamin_a_iu: number | null
+          vitamin_c_mg: number | null
+        }
+        Insert: {
+          brand?: string | null
+          calcium_mg?: number | null
+          carbs_g?: number | null
+          cholesterol_mg?: number | null
+          created_at?: string
+          external_id?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          grams: number
+          id?: string
+          iron_mg?: number | null
+          kcal?: number
+          logged_at?: string
+          logged_date?: string
+          meal_type?: string
+          name: string
+          note?: string | null
+          potassium_mg?: number | null
+          protein_g?: number | null
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          source?: string | null
+          sugars_g?: number | null
+          updated_at?: string
+          user_id: string
+          vitamin_a_iu?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Update: {
+          brand?: string | null
+          calcium_mg?: number | null
+          carbs_g?: number | null
+          cholesterol_mg?: number | null
+          created_at?: string
+          external_id?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          grams?: number
+          id?: string
+          iron_mg?: number | null
+          kcal?: number
+          logged_at?: string
+          logged_date?: string
+          meal_type?: string
+          name?: string
+          note?: string | null
+          potassium_mg?: number | null
+          protein_g?: number | null
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          source?: string | null
+          sugars_g?: number | null
+          updated_at?: string
+          user_id?: string
+          vitamin_a_iu?: number | null
+          vitamin_c_mg?: number | null
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string
@@ -95,6 +185,45 @@ export type Database = {
           user_id?: string
           water_pct?: number | null
           weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      nutrition_targets: {
+        Row: {
+          carbs_g: number | null
+          created_at: string
+          fat_g: number | null
+          fiber_g: number | null
+          id: string
+          kcal: number | null
+          protein_g: number | null
+          updated_at: string
+          user_id: string
+          water_ml: number | null
+        }
+        Insert: {
+          carbs_g?: number | null
+          created_at?: string
+          fat_g?: number | null
+          fiber_g?: number | null
+          id?: string
+          kcal?: number | null
+          protein_g?: number | null
+          updated_at?: string
+          user_id: string
+          water_ml?: number | null
+        }
+        Update: {
+          carbs_g?: number | null
+          created_at?: string
+          fat_g?: number | null
+          fiber_g?: number | null
+          id?: string
+          kcal?: number | null
+          protein_g?: number | null
+          updated_at?: string
+          user_id?: string
+          water_ml?: number | null
         }
         Relationships: []
       }
