@@ -130,7 +130,20 @@ export function FoodTracker({ amr, onSaved }: Props) {
   // Detail
   const [detail, setDetail] = useState<LogItem | null>(null);
 
+  // Nutrient info dialog (Cronometer-style)
+  const [infoKey, setInfoKey] = useState<NutrientKey | null>(null);
+
+  // Targets manual-override dialog
+  const [targetsOpen, setTargetsOpen] = useState(false);
+  const [targetsForm, setTargetsForm] = useState<Record<string, string>>({});
+
   const targets = useMemo(() => mergeTargets(amr, manualTargets), [amr, manualTargets]);
+
+  const targetFor = (k: NutrientKey) => resolveTarget(k, amr, manualTargets);
+  const totalFor = (k: NutrientKey) =>
+    items.reduce((s, i) => s + (Number((i as any)[NUTRIENT_META[k].field]) || 0), 0);
+  const isManual = (k: NutrientKey) =>
+    manualTargets && (manualTargets as any)[k] != null && Number((manualTargets as any)[k]) > 0;
 
   // Load today's items + targets
   const loadDay = async () => {
