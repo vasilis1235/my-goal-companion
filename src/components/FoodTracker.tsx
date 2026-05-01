@@ -794,22 +794,22 @@ export function FoodTracker({ amr, onSaved }: Props) {
                 {detail.grams ? `${Math.round(detail.grams)}γρ` : ""}
               </div>
               <Section title={t("ft.macros")}>
-                <Row label={t("ft.calories")} value={`${Math.round(detail.kcal)} kcal`} />
-                <Row label={t("ft.protein")} value={fmtG(detail.protein_g)} />
-                <Row label={t("ft.carbs")} value={fmtG(detail.carbs_g)} />
-                <Row label={t("ft.fat")} value={fmtG(detail.fat_g)} />
-                <Row label="• Κορεσμένα" value={fmtG(detail.saturated_fat_g)} />
-                <Row label="• Ζάχαρα" value={fmtG(detail.sugars_g)} />
-                <Row label={t("ft.fiber")} value={fmtG(detail.fiber_g)} />
+                <ClickRow onClick={() => setInfoKey("kcal")} label={t("ft.calories")} value={`${Math.round(detail.kcal)} kcal`} />
+                <ClickRow onClick={() => setInfoKey("protein_g")} label={t("ft.protein")} value={fmtG(detail.protein_g)} />
+                <ClickRow onClick={() => setInfoKey("carbs_g")} label={t("ft.carbs")} value={fmtG(detail.carbs_g)} />
+                <ClickRow onClick={() => setInfoKey("fat_g")} label={t("ft.fat")} value={fmtG(detail.fat_g)} />
+                <ClickRow onClick={() => setInfoKey("saturated_fat_g")} label={`• ${t("n.saturated_fat_g")}`} value={fmtG(detail.saturated_fat_g)} />
+                <ClickRow onClick={() => setInfoKey("sugars_g")} label={`• ${t("n.sugars_g")}`} value={fmtG(detail.sugars_g)} />
+                <ClickRow onClick={() => setInfoKey("fiber_g")} label={t("ft.fiber")} value={fmtG(detail.fiber_g)} />
+                <ClickRow onClick={() => setInfoKey("cholesterol_mg")} label={t("n.cholesterol_mg")} value={fmtMg(detail.cholesterol_mg)} />
               </Section>
               <Section title={t("ft.micros")}>
-                <Row label="Νάτριο" value={fmtMg(detail.sodium_mg)} />
-                <Row label="Κάλιο" value={fmtMg(detail.potassium_mg)} />
-                <Row label="Ασβέστιο" value={fmtMg(detail.calcium_mg)} />
-                <Row label="Σίδηρος" value={fmtMg(detail.iron_mg)} />
-                <Row label="Βιταμίνη C" value={fmtMg(detail.vitamin_c_mg)} />
-                <Row label="Βιταμίνη A" value={detail.vitamin_a_iu != null ? `${Math.round(detail.vitamin_a_iu)} IU` : "—"} />
-                <Row label="Χοληστερόλη" value={fmtMg(detail.cholesterol_mg)} />
+                <ClickRow onClick={() => setInfoKey("sodium_mg")} label={t("n.sodium_mg")} value={fmtMg(detail.sodium_mg)} />
+                <ClickRow onClick={() => setInfoKey("potassium_mg")} label={t("n.potassium_mg")} value={fmtMg(detail.potassium_mg)} />
+                <ClickRow onClick={() => setInfoKey("calcium_mg")} label={t("n.calcium_mg")} value={fmtMg(detail.calcium_mg)} />
+                <ClickRow onClick={() => setInfoKey("iron_mg")} label={t("n.iron_mg")} value={fmtMg(detail.iron_mg)} />
+                <ClickRow onClick={() => setInfoKey("vitamin_c_mg")} label={t("n.vitamin_c_mg")} value={fmtMg(detail.vitamin_c_mg)} />
+                <ClickRow onClick={() => setInfoKey("vitamin_a_iu")} label={t("n.vitamin_a_iu")} value={detail.vitamin_a_iu != null ? `${Math.round(detail.vitamin_a_iu)} IU` : "—"} />
               </Section>
             </div>
           )}
