@@ -465,12 +465,20 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
     <div className="space-y-4">
       {/* Day summary — Cronometer-style: clickable nutrients */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
           <CardTitle className="text-base">{t("ft.today")}</CardTitle>
-          <Button size="sm" variant="ghost" onClick={openTargets} className="h-8">
-            <SettingsIcon className="w-4 h-4 mr-1" />
-            {t("ft.targetSetup")}
-          </Button>
+          <div className="flex gap-1">
+            {driEngine && (
+              <Button size="sm" variant="ghost" onClick={() => setDriOpen(true)} className="h-8">
+                <FlaskConical className="w-4 h-4 mr-1" />
+                {t("ft.dri.open")}
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={openTargets} className="h-8">
+              <SettingsIcon className="w-4 h-4 mr-1" />
+              {t("ft.targetSetup")}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Calories — clickable */}
