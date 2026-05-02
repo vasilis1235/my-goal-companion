@@ -989,12 +989,14 @@ function ClickRow({ label, value, onClick }: { label: string; value: string; onC
 }
 
 function TargetGroup({
-  title, nKeys, t, amr, form, setForm,
+  title, nKeys, t, amr, profile, weightKg, form, setForm,
 }: {
   title: string;
   nKeys: NutrientKey[];
   t: (s: string) => string;
   amr: number | null;
+  profile?: any;
+  weightKg?: number | null;
   form: Record<string, string>;
   setForm: (f: Record<string, string>) => void;
 }) {
@@ -1004,7 +1006,7 @@ function TargetGroup({
       <div className="grid grid-cols-2 gap-2">
         {nKeys.map((k) => {
           const meta = NUTRIENT_META[k];
-          const auto = resolveTarget(k, amr, null);
+          const auto = resolveTarget(k, amr, null, profile ?? null, weightKg ?? null);
           const labelKey = `n.${k}`;
           const lab = t(labelKey) !== labelKey ? t(labelKey) : nutrientLabelFallback(k, t);
           return (
