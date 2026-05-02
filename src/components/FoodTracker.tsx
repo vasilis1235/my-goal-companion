@@ -26,9 +26,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppPrefs } from "@/contexts/AppPreferences";
 import { defaultTargetsFromAMR, mergeTargets, MealType, MEAL_TYPES, resolveTarget, buildEngineFromAMR } from "@/lib/macroTargets";
 import { NUTRIENT_META, NUTRIENT_INFO, NutrientKey, MACRO_KEYS, MICRO_KEYS } from "@/lib/nutrientInfo";
-import {
-  Plus as PlusIcon2, // dummy alias to avoid lint while preserving icons
-} from "lucide-react";
 import { FlaskConical, AlertTriangle } from "lucide-react";
 
 interface FoodResult {
