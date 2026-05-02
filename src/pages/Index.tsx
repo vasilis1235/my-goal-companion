@@ -356,7 +356,13 @@ const Index = () => {
           />
         </TabsContent>
         <TabsContent value="tracker" className="mt-4">
-          <FoodTracker bmr={dashboardBmr} amr={dashboardAmr} onSaved={() => loadAll()} />
+          <FoodTracker
+            bmr={dashboardBmr}
+            amr={dashboardAmr}
+            profile={profile ? { sex: profile.sex, age: profile.age, height_cm: profile.height_cm, activity_level: profile.activity_level } : null}
+            weightKg={latest ? Number(latest.weight_kg) : null}
+            onSaved={() => loadAll()}
+          />
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <HistoryList
