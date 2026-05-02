@@ -954,29 +954,29 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
                 </div>
               )}
 
-              <DriSection title={t("ft.dri.carbs")}>
+              <Section title={t("ft.dri.carbs")}>
                 <Row label={t("n.fiber_g")} value={`${driEngine.carbohydrates.fiber_g} g`} />
                 <Row label={t("ft.dri.netCarbs")} value={`${driEngine.carbohydrates.net_carbs_g} g`} />
                 <Row label={t("ft.dri.sugarMax")} value={`${driEngine.carbohydrates.sugar_max_g} g`} />
                 <Row label={t("ft.dri.starch")} value={`${driEngine.carbohydrates.starch_g} g`} />
-              </DriSection>
+              </Section>
 
-              <DriSection title={t("ft.dri.lipids")}>
+              <Section title={t("ft.dri.lipids")}>
                 <Row label={t("n.saturated_fat_g")} value={`${driEngine.lipids.saturated_g} g`} />
                 <Row label={t("ft.dri.mono")} value={`${driEngine.lipids.monounsaturated_g} g`} />
                 <Row label={t("ft.dri.poly")} value={`${driEngine.lipids.polyunsaturated_g} g`} />
                 <Row label={t("ft.dri.omega3")} value={`${driEngine.lipids.omega3.total_g} g (ALA ${driEngine.lipids.omega3.ALA_g} / EPA ${driEngine.lipids.omega3.EPA_g} / DHA ${driEngine.lipids.omega3.DHA_g})`} />
                 <Row label={t("ft.dri.omega6")} value={`${driEngine.lipids.omega6.total_g} g (LA ${driEngine.lipids.omega6.LA_g})`} />
                 <Row label={t("n.cholesterol_mg")} value={`≤ ${driEngine.lipids.cholesterol_mg} mg`} />
-              </DriSection>
+              </Section>
 
-              <DriSection title={t("ft.dri.aminoAcids")}>
+              <Section title={t("ft.dri.aminoAcids")}>
                 {Object.entries(driEngine.amino_acids).map(([k, v]) => (
                   <Row key={k} label={k.replace("_g", "")} value={`${v} g`} />
                 ))}
-              </DriSection>
+              </Section>
 
-              <DriSection title={t("ft.dri.vitamins")}>
+              <Section title={t("ft.dri.vitamins")}>
                 <Row label="Β1 Thiamine" value={`${driEngine.vitamins.B1_mg} mg`} />
                 <Row label="Β2 Riboflavin" value={`${driEngine.vitamins.B2_mg} mg`} />
                 <Row label="Β3 Niacin" value={`${driEngine.vitamins.B3_mg} mg (UL ${driEngine.vitamins.B3_UL_mg})`} />
@@ -989,9 +989,9 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
                 <Row label="Vitamin D" value={`${driEngine.vitamins.D_IU} IU (UL ${driEngine.vitamins.D_UL_IU})`} />
                 <Row label="Vitamin E" value={`${driEngine.vitamins.E_mg} mg (UL ${driEngine.vitamins.E_UL_mg})`} />
                 <Row label="Vitamin K" value={`${driEngine.vitamins.K_mcg} mcg`} />
-              </DriSection>
+              </Section>
 
-              <DriSection title={t("ft.dri.minerals")}>
+              <Section title={t("ft.dri.minerals")}>
                 <Row label={t("n.calcium_mg")} value={`${driEngine.minerals.calcium_mg} mg (UL ${driEngine.minerals.calcium_UL_mg})`} />
                 <Row label={t("n.iron_mg")} value={`${driEngine.minerals.iron_mg} mg (UL ${driEngine.minerals.iron_UL_mg})`} />
                 <Row label="Magnesium" value={`${driEngine.minerals.magnesium_mg} mg`} />
@@ -1003,16 +1003,16 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
                 <Row label="Copper" value={`${driEngine.minerals.copper_mcg} mcg`} />
                 <Row label="Manganese" value={`${driEngine.minerals.manganese_mg} mg`} />
                 <Row label={t("ft.water")} value={`${driEngine.minerals.water_L} L`} />
-              </DriSection>
+              </Section>
 
-              <DriSection title={t("ft.dri.balance")}>
+              <Section title={t("ft.dri.balance")}>
                 <Row label="Ω6 : Ω3" value={`${driEngine.balance_ratios.omega6_to_omega3.value} (${driEngine.balance_ratios.omega6_to_omega3.target_range})`} />
                 <Row label="Zn : Cu" value={`${driEngine.balance_ratios.zinc_to_copper.value} (${driEngine.balance_ratios.zinc_to_copper.target_range})`} />
                 <Row label="Ca : Mg" value={`${driEngine.balance_ratios.calcium_to_magnesium.value} (${driEngine.balance_ratios.calcium_to_magnesium.target_range})`} />
                 <Row label="K : Na" value={`${driEngine.balance_ratios.potassium_to_sodium.value} (${driEngine.balance_ratios.potassium_to_sodium.target_range})`} />
                 <Row label="Ca : P" value={`${driEngine.balance_ratios.calcium_to_phosphorus.value} (${driEngine.balance_ratios.calcium_to_phosphorus.target_range})`} />
                 <Row label="PRAL" value={`${driEngine.balance_ratios.PRAL_score.value} — ${driEngine.balance_ratios.PRAL_score.interpretation}`} />
-              </DriSection>
+              </Section>
 
               <p className="text-[11px] text-muted-foreground pt-2">{t("ft.dri.source")}</p>
             </div>
