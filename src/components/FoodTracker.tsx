@@ -903,9 +903,9 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
           <p className="text-xs text-muted-foreground">{t("ft.targets.desc")}</p>
           <div className="space-y-3">
             <TargetGroup title={t("ft.macros")} nKeys={["kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "saturated_fat_g", "sugars_g", "cholesterol_mg"]}
-              t={t} amr={amr} form={targetsForm} setForm={setTargetsForm} />
+              t={t} amr={amr} profile={profile} weightKg={weightKg} form={targetsForm} setForm={setTargetsForm} />
             <TargetGroup title={t("ft.micros")} nKeys={["sodium_mg", "potassium_mg", "calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_a_iu"]}
-              t={t} amr={amr} form={targetsForm} setForm={setTargetsForm} />
+              t={t} amr={amr} profile={profile} weightKg={weightKg} form={targetsForm} setForm={setTargetsForm} />
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
             <Button variant="ghost" onClick={resetTargets} className="text-muted-foreground">
