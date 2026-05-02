@@ -929,7 +929,98 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* USDA DRI Full Breakdown */}
+      <Dialog open={driOpen} onOpenChange={setDriOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-left flex items-center gap-2">
+              <FlaskConical className="w-5 h-5" />
+              {t("ft.dri.title")}
+            </DialogTitle>
+          </DialogHeader>
+          {driEngine && (
+            <div className="space-y-4 text-sm">
+              <p className="text-xs text-muted-foreground">{t("ft.dri.desc")}</p>
+
+              {driEngine.flags.length > 0 && (
+                <div className="rounded-md border border-warning/40 bg-warning/10 p-2 space-y-1">
+                  {driEngine.flags.map((f) => (
+                    <div key={f.nutrient} className="flex items-start gap-2 text-xs">
+                      <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+                      <div><span className="font-medium">{f.nutrient}:</span> {f.message} ({f.value} / {f.limit})</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <DriSection title={t("ft.dri.carbs")}>
+                <Row label={t("n.fiber_g")} value={`${driEngine.carbohydrates.fiber_g} g`} />
+                <Row label={t("ft.dri.netCarbs")} value={`${driEngine.carbohydrates.net_carbs_g} g`} />
+                <Row label={t("ft.dri.sugarMax")} value={`${driEngine.carbohydrates.sugar_max_g} g`} />
+                <Row label={t("ft.dri.starch")} value={`${driEngine.carbohydrates.starch_g} g`} />
+              </DriSection>
+
+              <DriSection title={t("ft.dri.lipids")}>
+                <Row label={t("n.saturated_fat_g")} value={`${driEngine.lipids.saturated_g} g`} />
+                <Row label={t("ft.dri.mono")} value={`${driEngine.lipids.monounsaturated_g} g`} />
+                <Row label={t("ft.dri.poly")} value={`${driEngine.lipids.polyunsaturated_g} g`} />
+                <Row label={t("ft.dri.omega3")} value={`${driEngine.lipids.omega3.total_g} g (ALA ${driEngine.lipids.omega3.ALA_g} / EPA ${driEngine.lipids.omega3.EPA_g} / DHA ${driEngine.lipids.omega3.DHA_g})`} />
+                <Row label={t("ft.dri.omega6")} value={`${driEngine.lipids.omega6.total_g} g (LA ${driEngine.lipids.omega6.LA_g})`} />
+                <Row label={t("n.cholesterol_mg")} value={`≤ ${driEngine.lipids.cholesterol_mg} mg`} />
+              </DriSection>
+
+              <DriSection title={t("ft.dri.aminoAcids")}>
+                {Object.entries(driEngine.amino_acids).map(([k, v]) => (
+                  <Row key={k} label={k.replace("_g", "")} value={`${v} g`} />
+                ))}
+              </DriSection>
+
+              <DriSection title={t("ft.dri.vitamins")}>
+                <Row label="Β1 Thiamine" value={`${driEngine.vitamins.B1_mg} mg`} />
+                <Row label="Β2 Riboflavin" value={`${driEngine.vitamins.B2_mg} mg`} />
+                <Row label="Β3 Niacin" value={`${driEngine.vitamins.B3_mg} mg (UL ${driEngine.vitamins.B3_UL_mg})`} />
+                <Row label="Β5 Pantothenic" value={`${driEngine.vitamins.B5_mg} mg`} />
+                <Row label="Β6" value={`${driEngine.vitamins.B6_mg} mg (UL ${driEngine.vitamins.B6_UL_mg})`} />
+                <Row label="Β12" value={`${driEngine.vitamins.B12_mcg} mcg`} />
+                <Row label="Folate" value={`${driEngine.vitamins.folate_mcg} mcg (UL ${driEngine.vitamins.folate_UL_mcg})`} />
+                <Row label={t("n.vitamin_a_iu")} value={`${driEngine.vitamins.A_mcg} mcg RAE (UL ${driEngine.vitamins.A_UL_mcg})`} />
+                <Row label={t("n.vitamin_c_mg")} value={`${driEngine.vitamins.C_mg} mg (UL ${driEngine.vitamins.C_UL_mg})`} />
+                <Row label="Vitamin D" value={`${driEngine.vitamins.D_IU} IU (UL ${driEngine.vitamins.D_UL_IU})`} />
+                <Row label="Vitamin E" value={`${driEngine.vitamins.E_mg} mg (UL ${driEngine.vitamins.E_UL_mg})`} />
+                <Row label="Vitamin K" value={`${driEngine.vitamins.K_mcg} mcg`} />
+              </DriSection>
+
+              <DriSection title={t("ft.dri.minerals")}>
+                <Row label={t("n.calcium_mg")} value={`${driEngine.minerals.calcium_mg} mg (UL ${driEngine.minerals.calcium_UL_mg})`} />
+                <Row label={t("n.iron_mg")} value={`${driEngine.minerals.iron_mg} mg (UL ${driEngine.minerals.iron_UL_mg})`} />
+                <Row label="Magnesium" value={`${driEngine.minerals.magnesium_mg} mg`} />
+                <Row label="Zinc" value={`${driEngine.minerals.zinc_mg} mg (UL ${driEngine.minerals.zinc_UL_mg})`} />
+                <Row label={t("n.potassium_mg")} value={`${driEngine.minerals.potassium_mg} mg`} />
+                <Row label={t("n.sodium_mg")} value={`${driEngine.minerals.sodium_mg} mg (UL ${driEngine.minerals.sodium_UL_mg})`} />
+                <Row label="Phosphorus" value={`${driEngine.minerals.phosphorus_mg} mg`} />
+                <Row label="Selenium" value={`${driEngine.minerals.selenium_mcg} mcg`} />
+                <Row label="Copper" value={`${driEngine.minerals.copper_mcg} mcg`} />
+                <Row label="Manganese" value={`${driEngine.minerals.manganese_mg} mg`} />
+                <Row label={t("ft.water")} value={`${driEngine.minerals.water_L} L`} />
+              </DriSection>
+
+              <DriSection title={t("ft.dri.balance")}>
+                <Row label="Ω6 : Ω3" value={`${driEngine.balance_ratios.omega6_to_omega3.value} (${driEngine.balance_ratios.omega6_to_omega3.target_range})`} />
+                <Row label="Zn : Cu" value={`${driEngine.balance_ratios.zinc_to_copper.value} (${driEngine.balance_ratios.zinc_to_copper.target_range})`} />
+                <Row label="Ca : Mg" value={`${driEngine.balance_ratios.calcium_to_magnesium.value} (${driEngine.balance_ratios.calcium_to_magnesium.target_range})`} />
+                <Row label="K : Na" value={`${driEngine.balance_ratios.potassium_to_sodium.value} (${driEngine.balance_ratios.potassium_to_sodium.target_range})`} />
+                <Row label="Ca : P" value={`${driEngine.balance_ratios.calcium_to_phosphorus.value} (${driEngine.balance_ratios.calcium_to_phosphorus.target_range})`} />
+                <Row label="PRAL" value={`${driEngine.balance_ratios.PRAL_score.value} — ${driEngine.balance_ratios.PRAL_score.interpretation}`} />
+              </DriSection>
+
+              <p className="text-[11px] text-muted-foreground pt-2">{t("ft.dri.source")}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
