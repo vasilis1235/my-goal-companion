@@ -147,13 +147,22 @@ export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
   const [targetsOpen, setTargetsOpen] = useState(false);
   const [targetsForm, setTargetsForm] = useState<Record<string, string>>({});
 
+  // DRI breakdown dialog
+  const [driOpen, setDriOpen] = useState(false);
+
   const targets = useMemo(() => mergeTargets(amr, manualTargets), [amr, manualTargets]);
 
-  const targetFor = (k: NutrientKey) => resolveTarget(k, amr, manualTargets);
+  const targetFor = (k: NutrientKey) => resolveTarget(k, amr, manualTargets, profile ?? null, weightKg ?? null);
   const totalFor = (k: NutrientKey) =>
     items.reduce((s, i) => s + (Number((i as any)[NUTRIENT_META[k].field]) || 0), 0);
   const isManual = (k: NutrientKey) =>
     manualTargets && (manualTargets as any)[k] != null && Number((manualTargets as any)[k]) > 0;
+
+  // Build full USDA DRI breakdown for current user (used in DRI dialog).
+  const driEngine = useMemo(
+    () => buildEngineFromAMR(amr, profile ?? null, weightKg ?? null),
+    [amr, profile, weightKg]
+  );
 
   // Load today's items + targets
   const loadDay = async () => {
