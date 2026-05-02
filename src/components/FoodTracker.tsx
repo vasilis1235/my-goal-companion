@@ -106,7 +106,7 @@ const MEAL_ICON: Record<MealType, typeof Sun> = {
 const scale = (per100: number | null | undefined, grams: number): number | null =>
   per100 == null ? null : Math.round(((per100 * grams) / 100) * 100) / 100;
 
-export function FoodTracker({ amr, onSaved }: Props) {
+export function FoodTracker({ amr, profile, weightKg, onSaved }: Props) {
   const { user } = useAuth();
   const { t } = useAppPrefs();
 
