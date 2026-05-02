@@ -82,6 +82,15 @@ interface LogItem {
 interface Props {
   bmr: number | null;
   amr: number | null;
+  profile?: {
+    sex: "male" | "female" | null;
+    age: number | null;
+    height_cm: number | null;
+    activity_level?: string | null;
+    pregnancy?: boolean;
+    lactation?: boolean;
+  } | null;
+  weightKg?: number | null;
   onSaved?: () => void;
 }
 
