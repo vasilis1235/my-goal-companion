@@ -312,28 +312,57 @@ export function buildReport(profile: UserProfile, m: Measurement): FullReport {
 }
 
 // ============ Labels ============
+// Sentence case με συντόμευση στην ίδια γραμμή
 export const MEASUREMENT_LABELS: Record<keyof IdealMeasurements, string> = {
-  waist_cm: "Περιφέρεια Μέσης",
-  hip_cm: "Περιφέρεια Ισχίου",
-  chest_cm: "Περιφέρεια Στήθους",
-  shoulders_cm: "Περιφέρεια Ώμων",
-  biceps_cm: "Περιφέρεια Δικεφάλων",
-  forearm_cm: "Περιφέρεια Πήχη",
-  wrist_cm: "Περιφέρεια Καρπού",
-  thigh_cm: "Περιφέρεια Τετρακεφάλων",
-  knee_cm: "Περιφέρεια Γόνατος",
-  calf_cm: "Περιφέρεια Γάμπας",
-  ankle_cm: "Περιφέρεια Αστραγάλου",
+  waist_cm: "Περιφέρεια μέσης (WC)",
+  hip_cm: "Περιφέρεια ισχίου (HC)",
+  chest_cm: "Περιφέρεια στήθους (CC)",
+  shoulders_cm: "Περιφέρεια ώμων (SC)",
+  biceps_cm: "Περιφέρεια δικεφάλων (CAG)",
+  forearm_cm: "Περιφέρεια πήχη (FC)",
+  wrist_cm: "Περιφέρεια καρπού (WrC)",
+  thigh_cm: "Περιφέρεια μηρού (TC)",
+  knee_cm: "Περιφέρεια γόνατος (KC)",
+  calf_cm: "Περιφέρεια γάμπας (CCG)",
+  ankle_cm: "Περιφέρεια αστραγάλου (AC)",
 };
 
 export const RATIO_LABELS: Record<keyof Ratios, string> = {
-  waist_hip: "Αναλογία Μέσης / Ισχίου",
-  waist_height: "Αναλογία Μέσης / Ύψους",
-  chest_waist: "Αναλογία Στήθους / Μέσης",
-  shoulders_waist: "Αναλογία Ώμων / Μέσης",
-  hip_thigh: "Αναλογία Ισχίου / Μηρού",
-  thigh_calf: "Αναλογία Μηρού / Γάμπας",
-  wrist_biceps: "Αναλογία Δικεφάλου / Καρπού",
-  thigh_knee: "Αναλογία Μηρού / Γόνατος",
-  ankle_calf: "Αναλογία Γάμπας / Αστραγάλου",
+  waist_hip: "Αναλογία μέσης-ισχίου (WHR)",
+  waist_height: "Αναλογία μέσης-ύψους (WHtR)",
+  chest_waist: "Αναλογία στήθους-μέσης (CWR)",
+  shoulders_waist: "Αναλογία ώμων-μέσης (SWR)",
+  hip_thigh: "Αναλογία ισχίου-μηρού (HTR)",
+  thigh_calf: "Αναλογία μηρού-γάμπας (TCR)",
+  wrist_biceps: "Αναλογία πήχη-δικεφάλου (FBR)",
+  thigh_knee: "Αναλογία μηρού-γόνατος (TKR)",
+  ankle_calf: "Αναλογία αστραγάλου-γάμπας (ACR)",
+};
+
+// Map κάθε ratio στην κατηγορία ζώνης (WHR/WHtR έχουν διαφορετικά risk thresholds)
+export const RATIO_KIND: Record<keyof Ratios, "whr_whtr" | "ratio"> = {
+  waist_hip: "whr_whtr",
+  waist_height: "whr_whtr",
+  chest_waist: "ratio",
+  shoulders_waist: "ratio",
+  hip_thigh: "ratio",
+  thigh_calf: "ratio",
+  wrist_biceps: "ratio",
+  thigh_knee: "ratio",
+  ankle_calf: "ratio",
+};
+
+// Map κάθε circumference μέτρηση στην κατάλληλη ζώνη (κορμός κινδύνου vs μυϊκή)
+export const MEASUREMENT_KIND: Record<keyof IdealMeasurements, "trunk_circ" | "muscle_circ"> = {
+  waist_cm: "trunk_circ",
+  hip_cm: "trunk_circ",
+  chest_cm: "muscle_circ",
+  shoulders_cm: "muscle_circ",
+  biceps_cm: "muscle_circ",
+  forearm_cm: "muscle_circ",
+  wrist_cm: "muscle_circ",
+  thigh_cm: "muscle_circ",
+  knee_cm: "muscle_circ",
+  calf_cm: "muscle_circ",
+  ankle_cm: "muscle_circ",
 };
